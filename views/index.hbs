@@ -1,0 +1,104 @@
+{{> header}}
+
+<div class="max-w-6xl mx-auto">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
+            {{#if currentMonth}}
+            <p class="text-gray-600 mt-1">{{currentMonth}}</p>
+            {{/if}}
+        </div>
+        <a href="/upload" class="btn-primary">Carica File</a>
+    </div>
+
+    {{#if error}}
+    <div class="border-l-4 border-red-500 bg-red-50 p-4 rounded mb-6">
+        <p class="text-red-700">{{error}}</p>
+    </div>
+    {{/if}}
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="card">
+            <h3 class="text-gray-600 text-sm font-medium mb-2">Totale Entrate</h3>
+            <p class="text-3xl font-bold text-success">€ {{formatAmount stats.totalIncome}}</p>
+            {{#if stats.transactionCount}}
+            <p class="text-xs text-gray-500 mt-2">{{stats.transactionCount}} transazioni</p>
+            {{/if}}
+        </div>
+        <div class="card">
+            <h3 class="text-gray-600 text-sm font-medium mb-2">Totale Uscite</h3>
+            <p class="text-3xl font-bold text-danger">€ {{formatAmount stats.totalExpenses}}</p>
+        </div>
+        <div class="card">
+            <h3 class="text-gray-600 text-sm font-medium mb-2">Saldo Netto</h3>
+            <p class="text-3xl font-bold {{#if stats.balance}}{{#if (gt stats.balance 0)}}text-success{{else}}text-danger{{/if}}{{else}}text-gray-900{{/if}}">
+                € {{formatAmount stats.balance}}
+            </p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Top Categories -->
+        {{#if topCategories.length}}
+        <div class="card">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Top Categorie di Spesa</h3>
+            <div class="space-y-3">
+                {{#each topCategories}}
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-700 capitalize">{{name}}</span>
+                    <span class="text-sm font-semibold text-gray-900">€ {{formatAmount amount}}</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-primary h-2 rounded-full" style="width: {{percentage amount ../stats.totalExpenses}}%"></div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        {{/if}}
+
+        <!-- By Bank -->
+        {{#if stats.byBank}}
+        <div class="card">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Per Banca</h3>
+            <div class="space-y-4">
+                {{#each stats.byBank}}
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="badge badge-{{@key}}">{{@key}}</span>
+                        <span class="text-sm font-semibold text-gray-900">€ {{formatAmount (subtract income expenses)}}</span>
+                    </div>
+                    <div class="flex text-xs text-gray-600">
+                        <span class="flex-1">Entrate: €{{formatAmount income}}</span>
+                        <span class="flex-1 text-right">Uscite: €{{formatAmount expenses}}</span>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        {{/if}}
+    </div>
+
+    {{#unless stats.transactionCount}}
+    <div class="card">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">Benvenuto nel Personal Finance Tracker</h2>
+        <p class="text-gray-600 mb-4">
+            Non ci sono ancora transazioni. Inizia caricando i file delle transazioni bancarie da Widiba, RelaxBanking o TradeRepublic.
+        </p>
+        <a href="/upload" class="btn-primary inline-block">
+            Carica File
+        </a>
+    </div>
+    {{/unless}}
+
+    {{#if stats.transactionCount}}
+    <div class="card">
+        <div class="flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-gray-900">Transazioni Recenti</h3>
+            <a href="/transactions" class="text-primary hover:text-primary-dark text-sm font-medium">Vedi tutte →</a>
+        </div>
+    </div>
+    {{/if}}
+</div>
+
+{{> footer}}

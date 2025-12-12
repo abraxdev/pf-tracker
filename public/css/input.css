@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #6366f1;
+  --primary-dark: #4f46e5;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --neutral-50: #f8fafc;
+  --neutral-100: #f1f5f9;
+  --neutral-800: #1e293b;
+  --neutral-900: #0f172a;
+}
+
+@layer base {
+  body {
+    @apply antialiased;
+  }
+}
+
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    @apply bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark
+           transition-all duration-200 font-medium shadow-sm hover:shadow-md
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-outline {
+    @apply border-2 border-primary text-primary px-4 py-2 rounded-lg
+           hover:bg-primary hover:text-white transition-all duration-200 font-medium;
+  }
+
+  .btn-ghost {
+    @apply text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100
+           transition-colors duration-200;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6
+           transition-shadow duration-200 hover:shadow-md;
+  }
+
+  .card-compact {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+           transition-colors duration-150;
+  }
+
+  .badge-widiba {
+    @apply bg-purple-100 text-purple-800 hover:bg-purple-200;
+  }
+
+  .badge-relaxbanking {
+    @apply bg-blue-100 text-blue-800 hover:bg-blue-200;
+  }
+
+  .badge-traderepublic {
+    @apply bg-emerald-100 text-emerald-800 hover:bg-emerald-200;
+  }
+
+  /* Amounts */
+  .amount-in {
+    @apply text-success font-semibold;
+  }
+
+  .amount-out {
+    @apply text-danger font-semibold;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    @apply inline-block w-5 h-5 border-2 border-gray-300 border-t-primary
+           rounded-full animate-spin;
+  }
+
+  /* Form inputs */
+  .form-input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
+           focus:ring-2 focus:ring-primary focus:border-primary
+           transition-colors duration-150;
+  }
+
+  .form-select {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
+           focus:ring-2 focus:ring-primary focus:border-primary
+           bg-white transition-colors duration-150;
+  }
+
+  /* Alerts */
+  .alert {
+    @apply border-l-4 p-4 rounded-r transition-all duration-200;
+  }
+
+  .alert-success {
+    @apply bg-green-50 border-green-500 text-green-800;
+  }
+
+  .alert-error {
+    @apply bg-red-50 border-red-500 text-red-800;
+  }
+
+  .alert-warning {
+    @apply bg-yellow-50 border-yellow-500 text-yellow-800;
+  }
+
+  .alert-info {
+    @apply bg-blue-50 border-blue-500 text-blue-800;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    @apply w-full bg-gray-200 rounded-full h-2 overflow-hidden;
+  }
+
+  .progress-bar-fill {
+    @apply bg-primary h-full rounded-full transition-all duration-300;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply bg-gray-200 animate-pulse rounded;
+  }
+}
+
+@layer utilities {
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateY(-10px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .animate-slideIn {
+    animation: slideIn 0.3s ease-out;
+  }
+}

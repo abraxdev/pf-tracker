@@ -1,0 +1,39 @@
+{
+  "name": "personal-finance-tracker",
+  "version": "1.0.0",
+  "description": "Web application for personal finance management with multiple bank account aggregation",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "tailwind:build": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css",
+    "tailwind:watch": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --watch"
+  },
+  "keywords": [
+    "finance",
+    "banking",
+    "tracker",
+    "supabase",
+    "ai-classification"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "hbs": "^4.2.0",
+    "multer": "^1.4.5-lts.1",
+    "xlsx": "^0.18.5",
+    "csv-parser": "^3.0.0",
+    "iconv-lite": "^0.6.3",
+    "@supabase/supabase-js": "^2.39.0",
+    "@anthropic-ai/sdk": "^0.9.1",
+    "axios": "^1.6.2",
+    "form-data": "^4.0.0",
+    "dotenv": "^16.3.1",
+    "date-fns": "^2.30.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.3.6",
+    "nodemon": "^3.0.2"
+  }
+}

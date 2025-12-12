@@ -1,0 +1,85 @@
+/**
+ * Parse and convert various amount formats to float
+ */
+
+/**
+ * Parse Italian amount format to float
+ * Examples: "1.234,56" → 1234.56, "-1.234,56" → -1234.56
+ *
+ * @param {string} amountStr - Amount in Italian format
+ * @returns {number|null} Float value or null if parsing fails
+ */
+function parseItalianAmount(amountStr) {
+    if (!amountStr || amountStr === '' || amountStr === '-') return null;
+
+    const str = String(amountStr).trim();
+
+    // Remove € symbol and whitespace
+    let cleaned = str.replace(/€/g, '').trim();
+
+    // Replace thousands separator (.) and decimal separator (,)
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? null : parsed;
+}
+
+/**
+ * Parse standard US format to float
+ * Examples: "1,234.56" → 1234.56
+ *
+ * @param {string} amountStr - Amount in US format
+ * @returns {number|null} Float value or null if parsing fails
+ */
+function parseUSAmount(amountStr) {
+    if (!amountStr || amountStr === '' || amountStr === '-') return null;
+
+    const str = String(amountStr).trim();
+
+    // Remove $ symbol, whitespace, and thousands separator
+    const cleaned = str.replace(/[$,\s]/g, '');
+
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? null : parsed;
+}
+
+/**
+ * Auto-detect format and parse amount
+ * @param {string|number} amount - Amount in various formats
+ * @returns {number|null} Float value
+ */
+function parseAmount(amount) {
+    if (typeof amount === 'number') return amount;
+    if (!amount) return null;
+
+    const str = String(amount).trim();
+
+    // Check if it's Italian format (has comma as decimal separator)
+    if (str.includes(',')) {
+        return parseItalianAmount(str);
+    }
+
+    // Otherwise try US format
+    return parseUSAmount(str);
+}
+
+/**
+ * Format amount to Italian currency format
+ * @param {number} amount - Amount as number
+ * @returns {string} Formatted amount
+ */
+function formatAmount(amount) {
+    if (amount == null || isNaN(amount)) return '0,00 €';
+
+    return new Intl.NumberFormat('it-IT', {
+        style: 'currency',
+        currency: 'EUR'
+    }).format(amount);
+}
+
+module.exports = {
+    parseItalianAmount,
+    parseUSAmount,
+    parseAmount,
+    formatAmount
+};
