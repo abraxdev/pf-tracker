@@ -112,6 +112,12 @@ uploadBtn.addEventListener('click', async () => {
 
         const result = await response.json();
 
+        // Completa l'ultimo step
+        updateStep('saving', 'complete');
+
+        // Attendi un attimo prima di nascondere la progress
+        await new Promise(resolve => setTimeout(resolve, 800));
+
         // Hide progress
         hideProgress();
 
@@ -136,20 +142,116 @@ uploadBtn.addEventListener('click', async () => {
 
 function showProgress() {
     const progressHtml = `
-        <div id="upload-progress" class="mt-4 animate-slideIn">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-sm text-gray-700">Elaborazione in corso...</span>
-                <span class="text-sm text-gray-500">Attendere</span>
+        <div id="upload-progress" class="mt-6 animate-slideIn upload-progress-card">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <svg class="w-6 h-6 text-primary animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Elaborazione in corso
+                </h4>
+                <span class="text-sm font-medium text-gray-600">Attendere...</span>
             </div>
-            <div class="progress-bar">
-                <div class="progress-bar-fill w-full"></div>
+
+            <!-- Progress bar animata -->
+            <div class="progress-bar-indeterminate mb-6"></div>
+
+            <!-- Steps progressivi -->
+            <div class="space-y-3">
+                <div class="upload-step" id="step-parsing">
+                    <div class="upload-step-icon active" id="icon-parsing">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-900" id="text-parsing">Analisi file e estrazione dati...</p>
+                        <p class="text-xs text-gray-500">Lettura e parsing dei file bancari</p>
+                    </div>
+                </div>
+
+                <div class="upload-step" id="step-classification">
+                    <div class="upload-step-icon pending" id="icon-classification">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-500" id="text-classification">Classificazione AI delle transazioni</p>
+                        <p class="text-xs text-gray-400">Categorizzazione automatica con Claude</p>
+                    </div>
+                </div>
+
+                <div class="upload-step" id="step-saving">
+                    <div class="upload-step-icon pending" id="icon-saving">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-500" id="text-saving">Salvataggio nel database</p>
+                        <p class="text-xs text-gray-400">Archiviazione sicura dei dati</p>
+                    </div>
+                </div>
             </div>
-            <p class="text-xs text-gray-500 mt-2">
-                Parsing file → Classificazione AI → Salvataggio database
-            </p>
+
+            <!-- Info aggiuntiva -->
+            <div class="mt-4 pt-4 border-t border-blue-200">
+                <p class="text-xs text-gray-600 text-center">
+                    Questo processo può richiedere anche alcuni minuti per file complessi
+                </p>
+            </div>
         </div>
     `;
     fileList.insertAdjacentHTML('afterend', progressHtml);
+
+    // Simula il progresso degli step (sarà sostituito con eventi reali se disponibili)
+    simulateProgress();
+}
+
+function simulateProgress() {
+    // Step 1: Parsing (già attivo)
+    setTimeout(() => {
+        updateStep('parsing', 'complete');
+        updateStep('classification', 'active');
+    }, 2000);
+
+    // Step 2: Classification
+    setTimeout(() => {
+        updateStep('classification', 'complete');
+        updateStep('saving', 'active');
+    }, 5000);
+
+    // Step 3 sarà completato quando la richiesta HTTP finisce
+}
+
+function updateStep(step, status) {
+    const icon = document.getElementById(`icon-${step}`);
+    const text = document.getElementById(`text-${step}`);
+
+    if (!icon || !text) return;
+
+    // Rimuovi tutte le classi di stato
+    icon.classList.remove('pending', 'active', 'complete');
+
+    // Aggiungi la nuova classe
+    icon.classList.add(status);
+
+    // Aggiorna il colore del testo
+    if (status === 'complete') {
+        text.classList.remove('text-gray-500');
+        text.classList.add('text-gray-900');
+
+        // Cambia icona a checkmark
+        icon.innerHTML = `
+            <svg class="w-5 h-5 animate-checkmark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+        `;
+    } else if (status === 'active') {
+        text.classList.remove('text-gray-500');
+        text.classList.add('text-gray-900');
+    }
 }
 
 function hideProgress() {

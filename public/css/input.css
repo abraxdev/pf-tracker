@@ -118,11 +118,46 @@
 
   /* Progress bar */
   .progress-bar {
-    @apply w-full bg-gray-200 rounded-full h-2 overflow-hidden;
+    @apply w-full bg-gray-200 rounded-full h-2 overflow-hidden relative;
   }
 
   .progress-bar-fill {
     @apply bg-primary h-full rounded-full transition-all duration-300;
+  }
+
+  .progress-bar-indeterminate {
+    @apply w-full bg-gray-200 rounded-full h-2 overflow-hidden relative;
+  }
+
+  .progress-bar-indeterminate::before {
+    content: '';
+    @apply absolute top-0 left-0 h-full w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent;
+    animation: progressIndeterminate 1.5s ease-in-out infinite;
+  }
+
+  /* Upload progress card */
+  .upload-progress-card {
+    @apply bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 shadow-lg;
+  }
+
+  .upload-step {
+    @apply flex items-center gap-3 mb-3 transition-all duration-300;
+  }
+
+  .upload-step-icon {
+    @apply w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300;
+  }
+
+  .upload-step-icon.pending {
+    @apply bg-gray-200 text-gray-400;
+  }
+
+  .upload-step-icon.active {
+    @apply bg-primary text-white animate-pulse;
+  }
+
+  .upload-step-icon.complete {
+    @apply bg-green-500 text-white;
   }
 
   /* Skeleton loading */
@@ -149,11 +184,39 @@
     }
   }
 
+  @keyframes progressIndeterminate {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(400%);
+    }
+  }
+
+  @keyframes checkmark {
+    0% {
+      transform: scale(0) rotate(-45deg);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.2) rotate(-45deg);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1) rotate(-45deg);
+      opacity: 1;
+    }
+  }
+
   .animate-fadeIn {
     animation: fadeIn 0.3s ease-in-out;
   }
 
   .animate-slideIn {
     animation: slideIn 0.3s ease-out;
+  }
+
+  .animate-checkmark {
+    animation: checkmark 0.4s ease-out forwards;
   }
 }
