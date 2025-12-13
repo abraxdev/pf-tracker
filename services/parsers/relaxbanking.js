@@ -5,6 +5,19 @@ const { parseItalianDate } = require('../../utils/dateUtils');
 const { parseItalianAmount } = require('../../utils/amountUtils');
 
 /**
+ * Truncate description to max length and append "..." if needed
+ * @param {string} description - Description to truncate
+ * @param {number} maxLength - Maximum length (default: 490)
+ * @returns {string} Truncated description
+ */
+function truncateDescription(description, maxLength = 490) {
+    if (!description) return '';
+    const trimmed = description.trim();
+    if (trimmed.length <= maxLength) return trimmed;
+    return trimmed.substring(0, maxLength - 3) + '...';
+}
+
+/**
  * Parse RelaxBanking TSV file
  *
  * File structure:
@@ -26,7 +39,11 @@ function parseRelaxBanking(filePath) {
             .pipe(iconv.decodeStream('latin1'))
             .pipe(csv({
                 separator: '\t',
-                mapHeaders: ({ header }) => header.trim()
+                mapHeaders: ({ header }) => header.trim(),
+                // Increase max column length to avoid truncation
+                maxRowBytes: 1000000, // 1MB per row
+                skipLines: 0,
+                strict: false
             }));
 
         stream.on('data', (row) => {
@@ -56,9 +73,17 @@ function parseRelaxBanking(filePath) {
 
                 // Build description
                 const descriptionParts = [];
-                if (descrizione) descriptionParts.push(descrizione);
-                if (note) descriptionParts.push(note);
+                if (descrizione) descriptionParts.push(descrizione.trim());
+                if (note) descriptionParts.push(note.trim());
                 const fullDescription = descriptionParts.join(' - ');
+
+                // Truncate description to 490 characters max
+                const finalDescription = truncateDescription(fullDescription) || 'N/A';
+
+                // Log if description was truncated
+                if (fullDescription.length > 490) {
+                    console.log(`[RelaxBanking] Description truncated from ${fullDescription.length} to 490 chars: "${fullDescription.substring(0, 50)}..."`);
+                }
 
                 // Create transaction object
                 const transaction = {
@@ -66,7 +91,7 @@ function parseRelaxBanking(filePath) {
                     transaction_date: transactionDate,
                     value_date: valueDate,
                     type_raw: '', // RelaxBanking doesn't have a type field
-                    description: fullDescription || 'N/A',
+                    description: finalDescription,
                     amount_in: amount > 0 ? Math.abs(amount) : 0,
                     amount_out: amount < 0 ? Math.abs(amount) : 0
                 };
@@ -80,6 +105,7 @@ function parseRelaxBanking(filePath) {
         });
 
         stream.on('end', () => {
+            console.log(`[RelaxBanking] Successfully parsed ${transactions.length} transactions`);
             resolve(transactions);
         });
 

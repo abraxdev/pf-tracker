@@ -3,6 +3,19 @@ const { parseExcelDate, toISODate } = require('../../utils/dateUtils');
 const { parseAmount } = require('../../utils/amountUtils');
 
 /**
+ * Truncate description to max length and append "..." if needed
+ * @param {string} description - Description to truncate
+ * @param {number} maxLength - Maximum length (default: 490)
+ * @returns {string} Truncated description
+ */
+function truncateDescription(description, maxLength = 490) {
+    if (!description) return '';
+    const trimmed = description.trim();
+    if (trimmed.length <= maxLength) return trimmed;
+    return trimmed.substring(0, maxLength - 3) + '...';
+}
+
+/**
  * Parse Widiba XLSX bank statement
  *
  * File structure:
@@ -111,9 +124,17 @@ function parseWidiba(filePath) {
 
             // Build description
             const descriptionParts = [];
-            if (causale) descriptionParts.push(causale);
-            if (descrizione) descriptionParts.push(descrizione);
+            if (causale) descriptionParts.push(causale.trim());
+            if (descrizione) descriptionParts.push(descrizione.trim());
             const fullDescription = descriptionParts.join(' - ');
+
+            // Truncate description to 490 characters max
+            const finalDescription = truncateDescription(fullDescription) || 'N/A';
+
+            // Log if description was truncated
+            if (fullDescription.length > 490) {
+                console.log(`[Widiba] Description truncated from ${fullDescription.length} to 490 chars`);
+            }
 
             // Determine amount_in / amount_out based on sign
             const transaction = {
@@ -121,7 +142,7 @@ function parseWidiba(filePath) {
                 transaction_date: transactionDate,
                 value_date: valueDate || transactionDate,
                 type_raw: causale,
-                description: fullDescription || 'N/A',
+                description: finalDescription,
                 amount_in: amount > 0 ? Math.abs(amount) : 0,
                 amount_out: amount < 0 ? Math.abs(amount) : 0
             };

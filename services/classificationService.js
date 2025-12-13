@@ -87,16 +87,16 @@ async function classifyWithCache(transactions) {
         // Check cache
         const { data: cached } = await supabase
             .from('classification_cache')
-            .select('type, category, merchant, confidence, source')
+            .select('type, category, merchant, confidence, source, hit_count')
             .eq('description_normalized', normalized)
             .single();
 
         if (cached) {
-            // Cache HIT: update hit count
+            // Cache HIT: update hit count and last used timestamp
             await supabase
                 .from('classification_cache')
                 .update({
-                    hit_count: supabase.raw('hit_count + 1'),
+                    hit_count: (cached.hit_count || 0) + 1,
                     last_used_at: new Date().toISOString()
                 })
                 .eq('description_normalized', normalized);

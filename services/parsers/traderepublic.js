@@ -2,6 +2,19 @@ const { PDFParse } = require('pdf-parse');
 const fs = require('fs');
 
 /**
+ * Truncate description to max length and append "..." if needed
+ * @param {string} description - Description to truncate
+ * @param {number} maxLength - Maximum length (default: 490)
+ * @returns {string} Truncated description
+ */
+function truncateDescription(description, maxLength = 490) {
+    if (!description) return '';
+    const trimmed = description.trim();
+    if (trimmed.length <= maxLength) return trimmed;
+    return trimmed.substring(0, maxLength - 3) + '...';
+}
+
+/**
  * Parse Italian date format "01 set 2025" to ISO "2025-09-01"
  */
 function parseDate(dateStr) {
@@ -178,16 +191,19 @@ async function parseTradeRepublic(filePath) {
                         }
 
                         if (currentTransaction.amount_in || currentTransaction.amount_out) {
+                            // Truncate description to 490 chars if needed
+                            const finalDescription = truncateDescription(currentTransaction.description);
+
                             transactions.push({
                                 bank: 'traderepublic',
                                 transaction_date: currentTransaction.date,
                                 value_date: currentTransaction.date,
                                 type_raw: currentTransaction.type_raw,
-                                description: currentTransaction.description,
+                                description: finalDescription,
                                 amount_in: currentTransaction.amount_in || 0,
                                 amount_out: currentTransaction.amount_out || 0
                             });
-                            console.log(`[TradeRepublic Parser] ✓ Added: ${currentTransaction.date} - ${currentTransaction.type_raw} - ${currentTransaction.description.substring(0, 30)}...`);
+                            console.log(`[TradeRepublic Parser] ✓ Added: ${currentTransaction.date} - ${currentTransaction.type_raw} - ${finalDescription.substring(0, 30)}...`);
                         }
 
                         i++; // Skip year line
@@ -271,16 +287,19 @@ async function parseTradeRepublic(filePath) {
                                 foundAmounts = true;
 
                                 if (currentTransaction.amount_in || currentTransaction.amount_out) {
+                                    // Truncate description to 490 chars if needed
+                                    const finalDescription = truncateDescription(currentTransaction.description);
+
                                     transactions.push({
                                         bank: 'traderepublic',
                                         transaction_date: currentTransaction.date,
                                         value_date: currentTransaction.date,
                                         type_raw: currentTransaction.type_raw,
-                                        description: currentTransaction.description,
+                                        description: finalDescription,
                                         amount_in: currentTransaction.amount_in || 0,
                                         amount_out: currentTransaction.amount_out || 0
                                     });
-                                    console.log(`[TradeRepublic Parser] ✓ Added: ${currentTransaction.date} - ${currentTransaction.type_raw} - ${currentTransaction.description.substring(0, 30)}...`);
+                                    console.log(`[TradeRepublic Parser] ✓ Added: ${currentTransaction.date} - ${currentTransaction.type_raw} - ${finalDescription.substring(0, 30)}...`);
                                 }
 
                                 i = j; // Skip to amounts line

@@ -85,7 +85,7 @@ function displayTransactions(transactions) {
                     <span class="badge badge-${tx.bank}">${tx.bank}</span>
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-900">
-                    <div class="max-w-xs truncate" title="${escapeHtml(tx.description)}">
+                    <div class="" title="${escapeHtml(tx.description)}">
                         ${escapeHtml(tx.description)}
                     </div>
                     ${tx.merchant ? `<div class="text-xs text-gray-500">${escapeHtml(tx.merchant)}</div>` : ''}

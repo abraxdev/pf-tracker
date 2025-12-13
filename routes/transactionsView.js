@@ -11,7 +11,7 @@ router.get('/', async (req, res) => {
             .select('*')
             .eq('status', 'active')
             .order('transaction_date', { ascending: false })
-            .limit(50);
+            .limit(100);
 
         if (error) throw error;
 
