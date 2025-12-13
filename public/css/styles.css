@@ -1154,6 +1154,11 @@ body {
   padding-right: 1rem;
 }
 
+.px-8 {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
 .py-0\.5 {
   padding-top: 0.125rem;
   padding-bottom: 0.125rem;
@@ -1222,8 +1227,8 @@ body {
 }
 
 .text-sm {
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+  font-size: 0.775rem;
+  line-height: 1.2rem;
 }
 
 .text-xl {
@@ -1246,6 +1251,11 @@ body {
 
 .font-semibold {
   font-weight: 600;
+}
+
+.amount-zero {
+  font-size: 0.5rem !important;
+  font-weight: normal !important;
 }
 
 .uppercase {
