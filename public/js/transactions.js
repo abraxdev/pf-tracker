@@ -161,18 +161,18 @@ function displayTransactions(transactions, replace = true) {
 
         return `
             <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3 text-sm text-gray-900">${date}</td>
+                <td class="px-4 py-3 text-sm text-gray-900 font-mono">${date}</td>
                 <td class="px-4 py-3 text-sm text-center">
                     <span class="badge badge-${tx.bank}">${tx.bank}</span>
                 </td>
-                <td class="px-4 py-3 text-sm text-gray-900">
+                <td class="px-4 py-3 text-sm text-gray-900 font-mono">
                     <div class="" title="${escapeHtml(tx.description)}">
                         ${escapeHtml(tx.description)}
                     </div>
                     ${tx.merchant ? `<div class="text-xs text-gray-500">${escapeHtml(tx.merchant)}</div>` : ''}
                 </td>
                 <td class="px-4 py-3 text-sm text-center">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 font-mono">
                         ${tx.category || 'uncategorized'}
                     </span>
                 </td>

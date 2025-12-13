@@ -3,161 +3,454 @@
 @tailwind utilities;
 
 :root {
-  --primary: #6366f1;
-  --primary-dark: #4f46e5;
-  --success: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --neutral-50: #f8fafc;
-  --neutral-100: #f1f5f9;
-  --neutral-800: #1e293b;
-  --neutral-900: #0f172a;
+  /* Fintech Color Palette - Dark Purple & Emerald */
+  --primary: #7C3AED;        /* Purple 600 - Main brand */
+  --primary-dark: #6D28D9;   /* Purple 700 - Hover states */
+  --primary-light: #A78BFA;  /* Purple 400 - Light accents */
+  --primary-subtle: #EDE9FE; /* Purple 100 - Backgrounds */
+
+  --accent: #10B981;         /* Emerald 500 - Success/Positive */
+  --accent-dark: #059669;    /* Emerald 600 - Hover */
+  --accent-light: #6EE7B7;   /* Emerald 300 - Light */
+  --accent-subtle: #D1FAE5;  /* Emerald 100 - Background */
+
+  --danger: #EF4444;         /* Red 500 - Errors/Negative */
+  --danger-dark: #DC2626;    /* Red 600 */
+  --danger-light: #FCA5A5;   /* Red 300 */
+  --danger-subtle: #FEE2E2;  /* Red 100 */
+
+  --warning: #F59E0B;        /* Amber 500 - Warnings */
+  --warning-dark: #D97706;   /* Amber 600 */
+  --warning-subtle: #FEF3C7; /* Amber 100 */
+
+  --info: #3B82F6;           /* Blue 500 - Info */
+  --info-dark: #2563EB;      /* Blue 600 */
+  --info-subtle: #DBEAFE;    /* Blue 100 */
+
+  /* Neutrals - Slate scale for modern look */
+  --neutral-50: #F8FAFC;
+  --neutral-100: #F1F5F9;
+  --neutral-200: #E2E8F0;
+  --neutral-300: #CBD5E1;
+  --neutral-400: #94A3B8;
+  --neutral-500: #64748B;
+  --neutral-600: #475569;
+  --neutral-700: #334155;
+  --neutral-800: #1E293B;
+  --neutral-900: #0F172A;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
 @layer base {
   body {
     @apply antialiased;
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; /* Inter features */
+  }
+
+  /* Better number rendering */
+  .font-mono, .tabular-nums {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @layer components {
-  /* Buttons */
+  /* ========================================
+     BUTTON SYSTEM - Fintech Design
+     ======================================== */
+
+  /* Base button styles */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2
+           font-medium rounded-xl transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
+  }
+
+  /* Size variants */
+  .btn-xs {
+    @apply px-2.5 py-1.5 text-xs;
+  }
+
+  .btn-sm {
+    @apply px-3 py-2 text-sm;
+  }
+
+  .btn-md {
+    @apply px-4 py-2.5 text-sm;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+
+  .btn-xl {
+    @apply px-8 py-4 text-lg;
+  }
+
+  /* Primary - Purple gradient */
   .btn-primary {
-    @apply bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark
-           transition-all duration-200 font-medium shadow-sm hover:shadow-md
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn btn-md bg-gradient-to-r from-purple-600 to-purple-700 text-white
+           shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40
+           hover:scale-[1.02] active:scale-[0.98]
+           focus:ring-purple-500;
   }
 
+  /* Secondary - Accent/Emerald */
+  .btn-secondary {
+    @apply btn btn-md bg-gradient-to-r from-emerald-500 to-emerald-600 text-white
+           shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40
+           hover:scale-[1.02] active:scale-[0.98]
+           focus:ring-emerald-500;
+  }
+
+  /* Outline variants */
   .btn-outline {
-    @apply border-2 border-primary text-primary px-4 py-2 rounded-lg
-           hover:bg-primary hover:text-white transition-all duration-200 font-medium;
+    @apply btn btn-md border-2 border-purple-600 text-purple-600 bg-white
+           hover:bg-purple-600 hover:text-white hover:shadow-lg
+           focus:ring-purple-500;
   }
 
+  .btn-outline-secondary {
+    @apply btn btn-md border-2 border-emerald-500 text-emerald-600 bg-white
+           hover:bg-emerald-500 hover:text-white hover:shadow-lg
+           focus:ring-emerald-500;
+  }
+
+  /* Ghost/Subtle variants */
   .btn-ghost {
-    @apply text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100
-           transition-colors duration-200;
+    @apply btn btn-md text-neutral-700 bg-transparent
+           hover:bg-neutral-100 hover:text-neutral-900
+           focus:ring-neutral-400;
   }
 
-  /* Cards */
+  .btn-ghost-primary {
+    @apply btn btn-md text-purple-600 bg-transparent
+           hover:bg-purple-50 hover:text-purple-700
+           focus:ring-purple-400;
+  }
+
+  /* Danger variant */
+  .btn-danger {
+    @apply btn btn-md bg-gradient-to-r from-red-500 to-red-600 text-white
+           shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40
+           hover:scale-[1.02] active:scale-[0.98]
+           focus:ring-red-500;
+  }
+
+  .btn-outline-danger {
+    @apply btn btn-md border-2 border-red-500 text-red-600 bg-white
+           hover:bg-red-500 hover:text-white hover:shadow-lg
+           focus:ring-red-500;
+  }
+
+  /* Soft variants - Subtle backgrounds */
+  .btn-soft-primary {
+    @apply btn btn-md bg-purple-100 text-purple-700
+           hover:bg-purple-200 hover:text-purple-800
+           focus:ring-purple-400;
+  }
+
+  .btn-soft-secondary {
+    @apply btn btn-md bg-emerald-100 text-emerald-700
+           hover:bg-emerald-200 hover:text-emerald-800
+           focus:ring-emerald-400;
+  }
+
+  /* Icon buttons */
+  .btn-icon {
+    @apply btn p-2.5 aspect-square;
+  }
+
+  .btn-icon-sm {
+    @apply btn p-2 aspect-square text-sm;
+  }
+
+  .btn-icon-lg {
+    @apply btn p-3 aspect-square text-lg;
+  }
+
+  /* ========================================
+     CARD SYSTEM - Modern & Elevated
+     ======================================== */
+
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6
-           transition-shadow duration-200 hover:shadow-md;
+    @apply bg-white rounded-2xl border border-neutral-200 p-6
+           shadow-sm hover:shadow-lg
+           transition-all duration-300;
+  }
+
+  .card-hover {
+    @apply card hover:scale-[1.01] hover:border-purple-200;
   }
 
   .card-compact {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
+    @apply bg-white rounded-xl border border-neutral-200 p-4
+           shadow-sm;
   }
 
-  /* Badges */
+  .card-gradient {
+    @apply bg-gradient-to-br from-purple-50 via-white to-emerald-50
+           rounded-2xl border border-purple-100 p-6
+           shadow-md hover:shadow-xl
+           transition-all duration-300;
+  }
+
+  .card-glass {
+    @apply bg-white/80 backdrop-blur-sm rounded-2xl
+           border border-white/20 p-6
+           shadow-lg;
+  }
+
+  /* ========================================
+     BADGE SYSTEM - Bank badges & status
+     ======================================== */
+
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-           transition-colors duration-150;
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+           text-xs font-semibold tracking-wide uppercase
+           transition-all duration-200;
   }
 
+  /* Bank badges - With unique colors */
   .badge-widiba {
-    @apply bg-purple-100 text-purple-800 hover:bg-purple-200;
+    @apply bg-gradient-to-r from-purple-100 to-purple-200
+           text-purple-800 border border-purple-300/50
+           hover:from-purple-200 hover:to-purple-300
+           shadow-sm hover:shadow-md;
   }
 
   .badge-relaxbanking {
-    @apply bg-blue-100 text-blue-800 hover:bg-blue-200;
+    @apply bg-gradient-to-r from-blue-100 to-blue-200
+           text-blue-800 border border-blue-300/50
+           hover:from-blue-200 hover:to-blue-300
+           shadow-sm hover:shadow-md;
   }
 
   .badge-traderepublic {
-    @apply bg-emerald-100 text-emerald-800 hover:bg-emerald-200;
+    @apply bg-gradient-to-r from-emerald-100 to-emerald-200
+           text-emerald-800 border border-emerald-300/50
+           hover:from-emerald-200 hover:to-emerald-300
+           shadow-sm hover:shadow-md;
   }
 
-  /* Amounts */
+  /* Status badges */
+  .badge-success {
+    @apply bg-emerald-100 text-emerald-700 border border-emerald-200;
+  }
+
+  .badge-warning {
+    @apply bg-amber-100 text-amber-700 border border-amber-200;
+  }
+
+  .badge-danger {
+    @apply bg-red-100 text-red-700 border border-red-200;
+  }
+
+  .badge-info {
+    @apply bg-blue-100 text-blue-700 border border-blue-200;
+  }
+
+  /* Minimal badge variant */
+  .badge-subtle {
+    @apply bg-neutral-100 text-neutral-700 border-0;
+  }
+
+  /* ========================================
+     AMOUNTS - Monospace & Clear
+     ======================================== */
+
   .amount-in {
-    @apply text-success font-semibold;
+    @apply font-mono text-emerald-600 font-bold tabular-nums
+           tracking-tight;
   }
 
   .amount-out {
-    @apply text-danger font-semibold;
+    @apply font-mono text-red-600 font-bold tabular-nums
+           tracking-tight;
+  }
+
+  .amount-zero {
+    @apply font-mono text-neutral-300 font-normal tabular-nums text-xs;
+  }
+
+  .amount-large {
+    @apply text-2xl font-mono font-bold tabular-nums;
+  }
+
+  .amount-card {
+    @apply flex flex-col gap-1 p-4 rounded-xl
+           bg-gradient-to-br from-neutral-50 to-neutral-100
+           border border-neutral-200;
+  }
+
+  .amount-card-label {
+    @apply text-xs font-semibold text-neutral-500 uppercase tracking-wider;
+  }
+
+  .amount-card-value {
+    @apply font-mono text-3xl font-bold tabular-nums;
   }
 
 
-  /* Loading spinner */
+  /* ========================================
+     LOADING STATES
+     ======================================== */
+
   .spinner {
-    @apply inline-block w-5 h-5 border-2 border-gray-300 border-t-primary
+    @apply inline-block w-5 h-5 border-2 border-neutral-200 border-t-purple-600
            rounded-full animate-spin;
   }
 
-  /* Form inputs */
+  .spinner-lg {
+    @apply inline-block w-8 h-8 border-4 border-neutral-200 border-t-purple-600
+           rounded-full animate-spin;
+  }
+
+  /* ========================================
+     FORM INPUTS - Modern & Clean
+     ======================================== */
+
   .form-input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
-           focus:ring-2 focus:ring-primary focus:border-primary
-           transition-colors duration-150;
+    @apply w-full px-4 py-2.5 border-2 border-neutral-200 rounded-xl
+           bg-white text-neutral-900 placeholder:text-neutral-400
+           focus:ring-2 focus:ring-purple-500 focus:border-purple-500
+           hover:border-neutral-300
+           transition-all duration-200
+           disabled:bg-neutral-50 disabled:cursor-not-allowed;
   }
 
   .form-select {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
-           focus:ring-2 focus:ring-primary focus:border-primary
-           bg-white transition-colors duration-150;
+    @apply w-full px-4 py-2.5 border-2 border-neutral-200 rounded-xl
+           bg-white text-neutral-900
+           focus:ring-2 focus:ring-purple-500 focus:border-purple-500
+           hover:border-neutral-300
+           transition-all duration-200
+           disabled:bg-neutral-50 disabled:cursor-not-allowed
+           appearance-none;
   }
 
-  /* Alerts */
+  .form-label {
+    @apply block text-sm font-semibold text-neutral-700 mb-2;
+  }
+
+  .form-helper {
+    @apply text-xs text-neutral-500 mt-1.5;
+  }
+
+  .form-error {
+    @apply text-xs text-red-600 mt-1.5 font-medium;
+  }
+
+  /* Input group */
+  .input-group {
+    @apply flex items-center gap-2;
+  }
+
+  .input-prefix, .input-suffix {
+    @apply text-sm font-medium text-neutral-500 px-3;
+  }
+
+  /* ========================================
+     ALERTS - Modern notifications
+     ======================================== */
+
   .alert {
-    @apply border-l-4 p-4 rounded-r transition-all duration-200;
+    @apply flex items-start gap-3 p-4 rounded-xl border-l-4
+           transition-all duration-200;
   }
 
   .alert-success {
-    @apply bg-green-50 border-green-500 text-green-800;
+    @apply bg-emerald-50 border-emerald-500 text-emerald-900;
   }
 
   .alert-error {
-    @apply bg-red-50 border-red-500 text-red-800;
+    @apply bg-red-50 border-red-500 text-red-900;
   }
 
   .alert-warning {
-    @apply bg-yellow-50 border-yellow-500 text-yellow-800;
+    @apply bg-amber-50 border-amber-500 text-amber-900;
   }
 
   .alert-info {
-    @apply bg-blue-50 border-blue-500 text-blue-800;
+    @apply bg-blue-50 border-blue-500 text-blue-900;
   }
 
-  /* Progress bar */
+  .alert-icon {
+    @apply flex-shrink-0 w-5 h-5;
+  }
+
+  .alert-content {
+    @apply flex-1;
+  }
+
+  .alert-title {
+    @apply font-semibold text-sm mb-1;
+  }
+
+  .alert-message {
+    @apply text-sm;
+  }
+
+  /* ========================================
+     PROGRESS BARS
+     ======================================== */
+
   .progress-bar {
-    @apply w-full bg-gray-200 rounded-full h-2 overflow-hidden relative;
+    @apply w-full bg-neutral-200 rounded-full h-2 overflow-hidden relative;
   }
 
   .progress-bar-fill {
-    @apply bg-primary h-full rounded-full transition-all duration-300;
+    @apply h-full rounded-full transition-all duration-300
+           bg-gradient-to-r from-purple-500 to-purple-600;
   }
 
   .progress-bar-indeterminate {
-    @apply w-full bg-gray-200 rounded-full h-2 overflow-hidden relative;
+    @apply w-full bg-neutral-200 rounded-full h-2 overflow-hidden relative;
   }
 
   .progress-bar-indeterminate::before {
     content: '';
-    @apply absolute top-0 left-0 h-full w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent;
+    @apply absolute top-0 left-0 h-full w-1/3;
+    background: linear-gradient(90deg, transparent, #7C3AED, transparent);
     animation: progressIndeterminate 1.5s ease-in-out infinite;
   }
 
-  /* Upload progress card */
+  /* ========================================
+     UPLOAD PROGRESS - Enhanced design
+     ======================================== */
+
   .upload-progress-card {
-    @apply bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 shadow-lg;
+    @apply bg-gradient-to-br from-purple-50 via-white to-emerald-50
+           border-2 border-purple-200 rounded-2xl p-8
+           shadow-2xl shadow-purple-500/10;
   }
 
   .upload-step {
-    @apply flex items-center gap-3 mb-3 transition-all duration-300;
+    @apply flex items-center gap-4 mb-4 transition-all duration-300;
   }
 
   .upload-step-icon {
-    @apply w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300;
+    @apply w-10 h-10 rounded-full flex items-center justify-center
+           transition-all duration-300 shadow-md;
   }
 
   .upload-step-icon.pending {
-    @apply bg-gray-200 text-gray-400;
+    @apply bg-neutral-200 text-neutral-400;
   }
 
   .upload-step-icon.active {
-    @apply bg-primary text-white animate-pulse;
+    @apply bg-gradient-to-br from-purple-500 to-purple-600
+           text-white animate-pulse shadow-lg shadow-purple-500/50;
   }
 
   .upload-step-icon.complete {
-    @apply bg-green-500 text-white;
+    @apply bg-gradient-to-br from-emerald-500 to-emerald-600
+           text-white shadow-lg shadow-emerald-500/50;
   }
 
   /* Skeleton loading */
