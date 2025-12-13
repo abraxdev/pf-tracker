@@ -3,6 +3,7 @@ const { classifyTransactions } = require('./classifier');
 const { normalizeDescription } = require('../utils/normalizer');
 
 const BATCH_SIZE = 30; // Max transactions per API call
+const useAntropic = process.env.ANTROPIC_USE;
 
 /**
  * Check static classification rules
@@ -39,6 +40,8 @@ async function checkStaticRules(descriptionNormalized) {
             }
 
             if (matches) {
+                console.log(rule.type);
+                console.log(rule.category);
                 return {
                     type: rule.type,
                     category: rule.category,
@@ -120,8 +123,9 @@ async function classifyWithCache(transactions) {
     if (uncached.length > 0) {
         for (let i = 0; i < uncached.length; i += BATCH_SIZE) {
             const batch = uncached.slice(i, i + BATCH_SIZE);
-
-            try {
+            
+            if (useAntropic) {
+                try {
                 const classifications = await classifyTransactions(batch);
 
                 for (let j = 0; j < batch.length; j++) {
@@ -170,6 +174,21 @@ async function classifyWithCache(transactions) {
                     });
                 }
             }
+
+            } else {
+                for (const tx of batch) {
+                    results.push({
+                        ...tx,
+                        type: 'other',
+                        category: 'uncategorized',
+                        merchant: null,
+                        confidence: 0,
+                        cache_hit: false,
+                        source: 'fallback'
+                    });
+                }
+            }
+            
         }
     }
 

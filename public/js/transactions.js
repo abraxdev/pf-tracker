@@ -7,10 +7,20 @@ const filterSearch = document.getElementById('filter-search');
 const applyFiltersBtn = document.getElementById('apply-filters');
 const resetFiltersBtn = document.getElementById('reset-filters');
 const transactionsTbody = document.getElementById('transactions-tbody');
+const loadMoreBtn = document.getElementById('load-more-btn');
+const loadMoreContainer = document.getElementById('load-more-container');
+
+// Pagination state
+let currentPage = 1;
+let totalPages = 1;
+let isLoading = false;
+let loadedTransactionIds = new Set(); // Track loaded transaction IDs to prevent duplicates
 
 // Apply filters
 applyFiltersBtn.addEventListener('click', async () => {
-    await loadTransactions();
+    currentPage = 1; // Reset to first page when applying filters
+    loadedTransactionIds.clear(); // Clear loaded IDs when applying new filters
+    await loadTransactions(true); // true = replace existing transactions
 });
 
 // Reset filters
@@ -19,11 +29,25 @@ resetFiltersBtn.addEventListener('click', () => {
     filterType.value = '';
     filterCategory.value = '';
     filterSearch.value = '';
-    loadTransactions();
+    currentPage = 1;
+    loadedTransactionIds.clear(); // Clear loaded IDs when resetting filters
+    loadTransactions(true);
 });
 
+// Load more button
+if (loadMoreBtn) {
+    loadMoreBtn.addEventListener('click', async () => {
+        if (!isLoading && currentPage < totalPages) {
+            currentPage++;
+            await loadTransactions(false); // false = append to existing transactions
+        }
+    });
+}
+
 // Load transactions with filters
-async function loadTransactions() {
+async function loadTransactions(replace = true) {
+    if (isLoading) return;
+
     const params = new URLSearchParams();
 
     if (filterBank.value) params.append('bank', filterBank.value);
@@ -31,27 +55,75 @@ async function loadTransactions() {
     if (filterCategory.value) params.append('category', filterCategory.value);
     if (filterSearch.value) params.append('search', filterSearch.value);
     params.append('limit', '100');
+    params.append('page', currentPage.toString());
 
     try {
+        isLoading = true;
+        updateLoadMoreButton('loading');
+
         const response = await fetch(`/api/transactions?${params.toString()}`);
         const result = await response.json();
 
         if (result.success) {
-            displayTransactions(result.data);
+            totalPages = result.pagination.totalPages;
+            displayTransactions(result.data, replace);
+            updateLoadMoreButton('idle');
         } else {
             console.error('Error loading transactions:', result.error);
             alert('Errore nel caricamento delle transazioni');
+            updateLoadMoreButton('idle');
         }
     } catch (error) {
         console.error('Error:', error);
         alert('Errore nel caricamento delle transazioni');
+        updateLoadMoreButton('idle');
+    } finally {
+        isLoading = false;
     }
 }
 
-function displayTransactions(transactions) {
+// Update load more button state
+function updateLoadMoreButton(state) {
+    if (!loadMoreBtn || !loadMoreContainer) return;
+
+    if (state === 'loading') {
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.innerHTML = '<span class="spinner"></span> Caricamento...';
+    } else if (state === 'idle') {
+        loadMoreBtn.disabled = false;
+        loadMoreBtn.innerHTML = 'Carica altre...';
+
+        // Show/hide load more button based on pagination
+        if (currentPage >= totalPages) {
+            loadMoreContainer.style.display = 'none';
+        } else {
+            loadMoreContainer.style.display = 'block';
+        }
+    }
+}
+
+function displayTransactions(transactions, replace = true) {
     if (!transactionsTbody) return;
 
-    if (transactions.length === 0) {
+    // Filter out duplicates based on transaction ID
+    const newTransactions = transactions.filter(tx => {
+        if (loadedTransactionIds.has(tx.id)) {
+            console.warn(`Duplicate transaction detected and skipped: ID ${tx.id}`);
+            return false;
+        }
+        return true;
+    });
+
+    // Add new transaction IDs to the set
+    newTransactions.forEach(tx => loadedTransactionIds.add(tx.id));
+
+    // If replacing, clear the set and re-add all IDs
+    if (replace) {
+        loadedTransactionIds.clear();
+        transactions.forEach(tx => loadedTransactionIds.add(tx.id));
+    }
+
+    if (newTransactions.length === 0 && replace) {
         transactionsTbody.innerHTML = `
             <tr>
                 <td colspan="6" class="px-4 py-8 text-center text-gray-500">
@@ -59,10 +131,18 @@ function displayTransactions(transactions) {
                 </td>
             </tr>
         `;
+        // Hide load more button when no transactions
+        if (loadMoreContainer) loadMoreContainer.style.display = 'none';
         return;
     }
 
-    transactionsTbody.innerHTML = transactions.map(tx => {
+    // Skip rendering if all transactions were duplicates (append mode only)
+    if (newTransactions.length === 0 && !replace) {
+        console.warn('All transactions in this batch were duplicates, skipping render');
+        return;
+    }
+
+    const transactionsHTML = newTransactions.map(tx => {
         const date = new Date(tx.transaction_date).toLocaleDateString('it-IT', {
             day: '2-digit',
             month: '2-digit',
@@ -105,6 +185,13 @@ function displayTransactions(transactions) {
             </tr>
         `;
     }).join('');
+
+    // Replace or append based on the parameter
+    if (replace) {
+        transactionsTbody.innerHTML = transactionsHTML;
+    } else {
+        transactionsTbody.insertAdjacentHTML('beforeend', transactionsHTML);
+    }
 }
 
 function escapeHtml(text) {
@@ -112,3 +199,8 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// Load transactions on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadTransactions(true);
+});

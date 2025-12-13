@@ -53,11 +53,15 @@ router.get('/', async (req, res) => {
             query = query.ilike('description', `%${search}%`);
         }
 
-        // Pagination
-        const offset = (page - 1) * limit;
+        // Pagination with stable ordering
+        // Order by transaction_date DESC, then by id DESC for consistent pagination
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const offset = (pageNum - 1) * limitNum;
         query = query
             .order('transaction_date', { ascending: false })
-            .range(offset, offset + limit - 1);
+            .order('id', { ascending: false })
+            .range(offset, offset + limitNum - 1);
 
         const { data, error, count } = await query;
 
@@ -67,10 +71,10 @@ router.get('/', async (req, res) => {
             success: true,
             data,
             pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
+                page: pageNum,
+                limit: limitNum,
                 total: count,
-                totalPages: Math.ceil(count / limit)
+                totalPages: Math.ceil(count / limitNum)
             }
         });
     } catch (error) {
