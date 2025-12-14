@@ -136,7 +136,7 @@ async function parseTradeRepublic(filePath) {
                         const beforeAmounts = restOfLine.substring(0, restOfLine.indexOf(amountMatches[0])).trim();
 
                         // Extract type and description
-                        const typeKeywords = ['Pagamento', 'Redditi', 'Transazione', 'Bonifico', 'Prelievo'];
+                        const typeKeywords = ['Pagamento', 'Redditi', 'Transazione', 'Bonifico', 'Prelievo', 'Trasferimento', 'Commercio'];
                         const typeContinuations = {
                             'Pagamento': ['degli interessi'],
                             'Transazione': ['con carta']
@@ -208,19 +208,43 @@ async function parseTradeRepublic(filePath) {
 
                         i++; // Skip year line
                     } else {
-                        // Format 2: Multiline (year on its own, then type, then description with amounts)
-                        let j = i + 2;
+                        // Format 2: Multiline (year on its own OR year + partial text, then more lines with amounts)
+                        let j = i + 1; // Start from year line
                         let foundAmounts = false;
                         const textParts = [];
 
+                        // If the year line has content after the year, include it
+                        if (restOfLine && restOfLine.length > 0) {
+                            textParts.push(restOfLine);
+                        }
+
+                        // Scan forward to find the line with amounts
                         while (j < lines.length && j < i + 15 && !foundAmounts) {
                             const currentLine = lines[j].trim();
+
+                            // Skip the date line itself
+                            if (j === i) {
+                                j++;
+                                continue;
+                            }
+
+                            // Skip the year line (already processed)
+                            if (j === i + 1) {
+                                j++;
+                                continue;
+                            }
+
+                            // Skip empty lines
+                            if (!currentLine || currentLine.length === 0) {
+                                j++;
+                                continue;
+                            }
 
                             // Check for amounts
                             const lineAmountMatches = currentLine.match(/(\d{1,3}(?:\.\d{3})*,\d{2}\s*€)/g);
 
                             if (lineAmountMatches && lineAmountMatches.length >= 1) {
-                                // Extract text before amounts
+                                // Found amounts - extract text before amounts on this line
                                 const beforeAmounts = currentLine.substring(0, currentLine.indexOf(lineAmountMatches[0])).trim();
                                 if (beforeAmounts) {
                                     textParts.push(beforeAmounts);
@@ -230,7 +254,7 @@ async function parseTradeRepublic(filePath) {
                                 const fullText = textParts.join(' ');
 
                                 // Extract type and description
-                                const typeKeywords = ['Pagamento', 'Redditi', 'Transazione', 'Bonifico', 'Prelievo'];
+                                const typeKeywords = ['Pagamento', 'Redditi', 'Transazione', 'Bonifico', 'Prelievo', 'Trasferimento', 'Commercio'];
                                 const typeContinuations = {
                                     'Pagamento': ['degli interessi'],
                                     'Transazione': ['con carta']
