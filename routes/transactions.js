@@ -11,6 +11,9 @@ router.get('/', async (req, res) => {
             bank,
             dateFrom,
             dateTo,
+            dateStart,
+            dateEnd,
+            month,
             category,
             type,
             status = 'active',
@@ -27,12 +30,35 @@ router.get('/', async (req, res) => {
             query = query.in('bank', banks);
         }
 
-        if (dateFrom) {
-            query = query.gte('transaction_date', dateFrom);
-        }
+        // Month filter (YYYY-MM format) - takes precedence
+        if (month) {
+            const [year, monthNum] = month.split('-');
+            const startDate = `${year}-${monthNum}-01`;
 
-        if (dateTo) {
-            query = query.lte('transaction_date', dateTo);
+            // Calculate last day of month
+            const lastDay = new Date(parseInt(year), parseInt(monthNum), 0).getDate();
+            const endDate = `${year}-${monthNum}-${String(lastDay).padStart(2, '0')}`;
+
+            query = query.gte('transaction_date', startDate);
+            query = query.lte('transaction_date', endDate);
+        }
+        // Custom date range (only if month filter not active)
+        else if (dateStart || dateEnd) {
+            if (dateStart) {
+                query = query.gte('transaction_date', dateStart);
+            }
+            if (dateEnd) {
+                query = query.lte('transaction_date', dateEnd);
+            }
+        }
+        // Legacy dateFrom/dateTo support
+        else {
+            if (dateFrom) {
+                query = query.gte('transaction_date', dateFrom);
+            }
+            if (dateTo) {
+                query = query.lte('transaction_date', dateTo);
+            }
         }
 
         if (category) {

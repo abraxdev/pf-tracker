@@ -4,8 +4,13 @@ const filterBank = document.getElementById('filter-bank');
 const filterType = document.getElementById('filter-type');
 const filterCategory = document.getElementById('filter-category');
 const filterSearch = document.getElementById('filter-search');
+const filterDateStart = document.getElementById('filter-date-start');
+const filterDateEnd = document.getElementById('filter-date-end');
 const applyFiltersBtn = document.getElementById('apply-filters');
 const resetFiltersBtn = document.getElementById('reset-filters');
+const toggleAdvancedBtn = document.getElementById('toggle-advanced-filters');
+const advancedFilters = document.getElementById('advanced-filters');
+const monthFilterContainer = document.getElementById('month-filter-container');
 const transactionsTbody = document.getElementById('transactions-tbody');
 const loadMoreBtn = document.getElementById('load-more-btn');
 const loadMoreContainer = document.getElementById('load-more-container');
@@ -15,6 +20,71 @@ let currentPage = 1;
 let totalPages = 1;
 let isLoading = false;
 let loadedTransactionIds = new Set(); // Track loaded transaction IDs to prevent duplicates
+let selectedMonth = null; // Track selected month filter
+
+// Toggle advanced filters
+toggleAdvancedBtn.addEventListener('click', () => {
+    advancedFilters.classList.toggle('hidden');
+    const isVisible = !advancedFilters.classList.contains('hidden');
+    toggleAdvancedBtn.innerHTML = isVisible
+        ? '<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>Nascondi Filtri Avanzati'
+        : '<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>Filtri Avanzati';
+});
+
+// Generate month filter buttons
+function generateMonthFilters() {
+    const months = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+                    'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+    const today = new Date();
+    const currentMonth = today.getMonth(); // 0-11
+    const currentYear = today.getFullYear();
+
+    let monthsHTML = '';
+
+    // Generate from current month back to January
+    for (let i = currentMonth; i >= 0; i--) {
+        const monthValue = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
+        monthsHTML += `
+            <button type="button"
+                    class="month-filter-btn btn-outline btn-sm"
+                    data-month="${monthValue}">
+                ${months[i]}
+            </button>
+        `;
+    }
+
+    monthFilterContainer.innerHTML = monthsHTML;
+
+    // Add click handlers to month buttons
+    document.querySelectorAll('.month-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Toggle selection
+            const month = btn.dataset.month;
+
+            if (selectedMonth === month) {
+                // Deselect
+                selectedMonth = null;
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline');
+            } else {
+                // Deselect all others
+                document.querySelectorAll('.month-filter-btn').forEach(b => {
+                    b.classList.remove('btn-primary');
+                    b.classList.add('btn-outline');
+                });
+
+                // Select this one
+                selectedMonth = month;
+                btn.classList.remove('btn-outline');
+                btn.classList.add('btn-primary');
+
+                // Clear custom date range when selecting month
+                filterDateStart.value = '';
+                filterDateEnd.value = '';
+            }
+        });
+    });
+}
 
 // Apply filters
 applyFiltersBtn.addEventListener('click', async () => {
@@ -29,6 +99,16 @@ resetFiltersBtn.addEventListener('click', () => {
     filterType.value = '';
     filterCategory.value = '';
     filterSearch.value = '';
+    filterDateStart.value = '';
+    filterDateEnd.value = '';
+    selectedMonth = null;
+
+    // Reset month buttons
+    document.querySelectorAll('.month-filter-btn').forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-outline');
+    });
+
     currentPage = 1;
     loadedTransactionIds.clear(); // Clear loaded IDs when resetting filters
     loadTransactions(true);
@@ -54,6 +134,17 @@ async function loadTransactions(replace = true) {
     if (filterType.value) params.append('type', filterType.value);
     if (filterCategory.value) params.append('category', filterCategory.value);
     if (filterSearch.value) params.append('search', filterSearch.value);
+
+    // Month filter (takes precedence over custom date range)
+    if (selectedMonth) {
+        params.append('month', selectedMonth);
+    }
+    // Custom date range (only if month filter is not active)
+    else if (filterDateStart.value || filterDateEnd.value) {
+        if (filterDateStart.value) params.append('dateStart', filterDateStart.value);
+        if (filterDateEnd.value) params.append('dateEnd', filterDateEnd.value);
+    }
+
     params.append('limit', '100');
     params.append('page', currentPage.toString());
 
@@ -202,5 +293,6 @@ function escapeHtml(text) {
 
 // Load transactions on page load
 document.addEventListener('DOMContentLoaded', () => {
+    generateMonthFilters(); // Generate month filter buttons
     loadTransactions(true);
 });

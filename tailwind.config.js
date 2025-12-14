@@ -55,6 +55,8 @@ module.exports = {
     'form-label',
     'form-helper',
     'form-error',
+    'input-fintech',
+    'label-fintech',
     // Alerts
     'alert',
     'alert-success',
