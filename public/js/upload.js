@@ -118,16 +118,15 @@ uploadBtn.addEventListener('click', async () => {
         // Attendi un attimo prima di nascondere la progress
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // Hide progress
-        hideProgress();
-
         if (result.success) {
-            displayResults(result.files);
+            // Sostituisci progress con risultati
+            replaceProgressWithResults(result.files);
             // Reset
             selectedFiles = [];
             fileInput.value = '';
             displayFileList();
         } else {
+            hideProgress();
             showError(result.error || 'Errore sconosciuto');
         }
     } catch (error) {
@@ -265,8 +264,10 @@ function showError(message) {
             <strong>Errore:</strong> ${message}
         </div>
     `;
-    const container = document.querySelector('.max-w-4xl');
-    container.insertAdjacentHTML('beforeend', errorHtml);
+    const container = document.querySelector('.container');
+    if (container) {
+        container.insertAdjacentHTML('beforeend', errorHtml);
+    }
 
     setTimeout(() => {
         const alerts = document.querySelectorAll('.alert-error');
@@ -274,9 +275,52 @@ function showError(message) {
     }, 5000);
 }
 
+function replaceProgressWithResults(files) {
+    const progress = document.getElementById('upload-progress');
+
+    if (!progress) {
+        // Fallback se il progress non esiste più
+        displayResults(files);
+        return;
+    }
+
+    // Crea HTML dei risultati
+    const resultsHTML = buildResultsHTML(files);
+
+    // Aggiungi transizione al progress
+    progress.style.transition = 'all 0.3s ease-out';
+    progress.style.opacity = '0';
+    progress.style.transform = 'translateY(-10px)';
+
+    setTimeout(() => {
+        const resultsDiv = document.createElement('div');
+        resultsDiv.id = 'results-container';
+        resultsDiv.className = 'mt-6 card';
+        resultsDiv.style.transition = 'all 0.3s ease-in';
+        resultsDiv.style.opacity = '0';
+        resultsDiv.style.transform = 'translateY(10px)';
+        resultsDiv.innerHTML = resultsHTML;
+
+        // Sostituisci il progress con i risultati
+        progress.parentNode.replaceChild(resultsDiv, progress);
+
+        // Fade in con animazione
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                resultsDiv.style.opacity = '1';
+                resultsDiv.style.transform = 'translateY(0)';
+            }, 50);
+        });
+    }, 300);
+}
+
 function displayResults(files) {
     const resultsContainer = document.getElementById('results-container') || createResultsContainer();
+    resultsContainer.innerHTML = buildResultsHTML(files);
+    resultsContainer.classList.remove('hidden');
+}
 
+function buildResultsHTML(files) {
     const resultsHTML = files.map(file => {
         if (file.status === 'success') {
             return `
@@ -326,7 +370,7 @@ function displayResults(files) {
         }
     }).join('');
 
-    resultsContainer.innerHTML = `
+    return `
         <h3 class="font-semibold text-gray-900 mb-4">Risultati Upload</h3>
         <div class="space-y-3">
             ${resultsHTML}
@@ -336,13 +380,15 @@ function displayResults(files) {
             <a href="/" class="btn-outline">Vai alla Dashboard</a>
         </div>
     `;
-    resultsContainer.classList.remove('hidden');
 }
 
 function createResultsContainer() {
     const container = document.createElement('div');
     container.id = 'results-container';
     container.className = 'mt-8 card hidden';
-    document.querySelector('.max-w-4xl').appendChild(container);
+    const mainContainer = document.querySelector('.container');
+    if (mainContainer) {
+        mainContainer.appendChild(container);
+    }
     return container;
 }
