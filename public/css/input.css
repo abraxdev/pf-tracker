@@ -470,6 +470,34 @@
   .skeleton {
     @apply bg-gray-200 animate-pulse rounded;
   }
+
+  /* ========================================
+     TRANSACTION ROWS - Actions & States
+     ======================================== */
+
+  /* Transaction row with hover actions */
+  .transaction-row {
+    @apply relative transition-all duration-200;
+  }
+
+  /* Show actions on row hover - using :hover pseudo-class */
+  .transaction-row:hover .row-actions {
+    opacity: 1 !important;
+  }
+
+  /* Excluded/Inactive transaction styling */
+  .transaction-row-excluded {
+    @apply bg-gray-100 opacity-60;
+  }
+
+  .transaction-row-excluded:hover {
+    @apply bg-gray-200 opacity-70;
+  }
+
+  /* Row actions container */
+  .row-actions {
+    @apply flex items-center justify-center gap-1 transition-opacity duration-200;
+  }
 }
 
 @layer utilities {

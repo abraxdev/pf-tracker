@@ -108,18 +108,19 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Banca</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrizione</th>
-                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
+                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                        <th class="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Banca</th>
+                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrizione</th>
+                        <th class="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
                         <th class="px-8 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Entrate</th>
                         <th class="px-8 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Uscite</th>
+                        <th class="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Azioni</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200" id="transactions-tbody">
                     <!-- Transactions will be loaded via JavaScript -->
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">
                             <span class="spinner"></span>
                             <span class="ml-2">Caricamento transazioni...</span>
                         </td>
@@ -165,7 +166,7 @@
                 </div>
 
                 <!-- Totals Section - aligned with table columns -->
-                <div class="flex items-center gap-0">
+                <div class="flex items-center gap-0 sum-wrap">
                     <!-- Total Entrate -->
                     <div class="px-6 text-center border-r border-gray-200">
                         <div class="text-xs text-gray-500 font-medium mb-0.5">Somma entrate</div>

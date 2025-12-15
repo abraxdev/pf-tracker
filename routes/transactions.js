@@ -130,7 +130,7 @@ router.get('/:id', async (req, res) => {
 // Update transaction
 router.patch('/:id', async (req, res) => {
     try {
-        const { type, category, merchant, notes, tags, status } = req.body;
+        const { type, category, merchant, notes, tags, status, description } = req.body;
 
         const updates = {};
         if (type) updates.type = type;
@@ -139,6 +139,7 @@ router.patch('/:id', async (req, res) => {
         if (notes !== undefined) updates.notes = notes;
         if (tags) updates.tags = tags;
         if (status) updates.status = status;
+        if (description) updates.description = description;
 
         const { data, error } = await supabase
             .from('transactions')
