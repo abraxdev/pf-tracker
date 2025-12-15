@@ -211,8 +211,8 @@
      ======================================== */
 
   .badge {
-    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-           text-xs font-semibold tracking-wide uppercase
+    @apply inline-flex items-center gap-1.5 px-2 py-1 rounded-full
+           text-xs font-semibold tracking-wide font-mono
            transition-all duration-200;
   }
 
@@ -225,16 +225,16 @@
   }
 
   .badge-relaxbanking {
-    @apply bg-gradient-to-r from-blue-100 to-blue-200
-           text-blue-800 border border-blue-300/50
-           hover:from-blue-200 hover:to-blue-300
+    @apply bg-gradient-to-r from-emerald-100 to-emerald-200
+           text-emerald-800 border border-emerald-300/50
+           hover:from-emerald-200 hover:to-emerald-300
            shadow-sm hover:shadow-md;
   }
 
   .badge-traderepublic {
-    @apply bg-gradient-to-r from-emerald-100 to-emerald-200
-           text-emerald-800 border border-emerald-300/50
-           hover:from-emerald-200 hover:to-emerald-300
+    @apply bg-white
+           text-black border border-black
+           hover:from-slate-50 hover:to-slate-50
            shadow-sm hover:shadow-md;
   }
 

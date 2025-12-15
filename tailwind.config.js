@@ -1,9 +1,72 @@
 module.exports = {
   content: [
     "./views/**/*.hbs",
-    "./public/**/*.js"
+    "./views/*.hbs",
+    "./public/**/*.js",
+    "../app/views/**/*.hbs",
+    "../app/views/*.hbs",
+    "../app/public/**/*.js"
   ],
   safelist: [
+    // Layout & Position
+    'fixed',
+    'absolute',
+    'relative',
+    'sticky',
+    'bottom-0',
+    'top-0',
+    'left-0',
+    'right-0',
+    'z-40',
+    'z-50',
+    'w-full',
+    // Flexbox & Grid
+    'flex',
+    'flex-1',
+    'flex-col',
+    'items-center',
+    'items-stretch',
+    'justify-between',
+    'justify-end',
+    'gap-0',
+    'gap-2',
+    'gap-3',
+    'gap-4',
+    // Sizing
+    'h-16',
+    'w-5',
+    'h-5',
+    // Spacing
+    'px-6',
+    'px-8',
+    'py-4',
+    'mb-0.5',
+    'mt-6',
+    // Borders
+    'border',
+    'border-t',
+    'border-r',
+    'border-gray-200',
+    'shadow-lg',
+    // Backgrounds
+    'bg-white',
+    'bg-slate-50',
+    // Text
+    'text-xs',
+    'text-sm',
+    'text-lg',
+    'text-xl',
+    'text-center',
+    'text-gray-500',
+    'text-gray-900',
+    'text-green-600',
+    'text-red-600',
+    'text-purple-600',
+    'font-medium',
+    'font-bold',
+    // Transitions
+    'transition-all',
+    'duration-300',
     // Button variants
     'btn',
     'btn-primary',

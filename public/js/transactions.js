@@ -46,7 +46,7 @@ function generateMonthFilters() {
         const monthValue = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
         monthsHTML += `
             <button type="button"
-                    class="month-filter-btn btn-outline btn-sm"
+                    class="month-filter-btn btn-outline text-xs px-2"
                     data-month="${monthValue}">
                 ${months[i]}
             </button>
@@ -256,7 +256,7 @@ function displayTransactions(transactions, replace = true) {
                 <td class="px-4 py-3 text-sm text-center">
                     <span class="badge badge-${tx.bank}">${tx.bank}</span>
                 </td>
-                <td class="px-4 py-3 text-sm text-gray-900 font-mono">
+                <td class="px-4 py-3 text-xs text-gray-900 font-mono">
                     <div class="" title="${escapeHtml(tx.description)}">
                         ${escapeHtml(tx.description)}
                     </div>
@@ -283,12 +283,94 @@ function displayTransactions(transactions, replace = true) {
     } else {
         transactionsTbody.insertAdjacentHTML('beforeend', transactionsHTML);
     }
+
+    // Update summary bar with all currently displayed transactions
+    updateSummaryBar();
 }
 
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Summary Bar Functions
+function updateSummaryBar() {
+    const rows = transactionsTbody.querySelectorAll('tr');
+
+    // If no transactions or showing "no results" message, hide summary bar
+    if (rows.length === 0 || rows[0].querySelector('td[colspan]')) {
+        hideSummaryBar();
+        return;
+    }
+
+    let totalEntrate = 0;
+    let totalUscite = 0;
+    let count = 0;
+
+    rows.forEach(row => {
+        // Skip if it's a message row
+        if (row.querySelector('td[colspan]')) return;
+
+        count++;
+
+        // Get entrate amount
+        const entrateCell = row.querySelectorAll('td')[4]; // 5th column (0-indexed)
+        const entrateText = entrateCell?.textContent.trim();
+        if (entrateText && entrateText !== '-' && entrateText !== '—') {
+            const amount = parseFloat(entrateText.replace('€', '').replace(/\./g, '').replace(',', '.').trim());
+            if (!isNaN(amount)) {
+                totalEntrate += amount;
+            }
+        }
+
+        // Get uscite amount
+        const usciteCell = row.querySelectorAll('td')[5]; // 6th column (0-indexed)
+        const usciteText = usciteCell?.textContent.trim();
+        if (usciteText && usciteText !== '-' && usciteText !== '—') {
+            const amount = parseFloat(usciteText.replace('€', '').replace(/\./g, '').replace(',', '.').trim());
+            if (!isNaN(amount)) {
+                totalUscite += amount;
+            }
+        }
+    });
+
+    // Update summary bar values
+    const summaryCount = document.getElementById('summary-count');
+    const summaryEntrate = document.getElementById('summary-entrate');
+    const summaryUscite = document.getElementById('summary-uscite');
+
+    if (summaryCount) summaryCount.textContent = count;
+    if (summaryEntrate) summaryEntrate.textContent = formatCurrency(totalEntrate);
+    if (summaryUscite) summaryUscite.textContent = formatCurrency(totalUscite);
+
+    // Show summary bar with animation
+    showSummaryBar();
+}
+
+function showSummaryBar() {
+    const summaryBar = document.getElementById('summary-bar');
+    if (summaryBar) {
+        // Slide up animation
+        summaryBar.style.transform = 'translateY(0)';
+    }
+}
+
+function hideSummaryBar() {
+    const summaryBar = document.getElementById('summary-bar');
+    if (summaryBar) {
+        // Slide down animation
+        summaryBar.style.transform = 'translateY(100%)';
+    }
+}
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('it-IT', {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(amount);
 }
 
 // Load transactions on page load
