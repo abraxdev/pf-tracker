@@ -373,6 +373,115 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
+// Export CSV functionality
+const exportCsvBtn = document.getElementById('exp-csv-btn');
+if (exportCsvBtn) {
+    exportCsvBtn.addEventListener('click', exportToCSV);
+}
+
+function formatAmountForCSV(amountText) {
+    // Format for Excel IT: remove thousand separators, keep comma as decimal separator
+    // Convert from € 1.234,56 to 1234,56
+    let cleaned = amountText.replace('€', '').trim();
+
+    // Remove thousand separators (dots)
+    cleaned = cleaned.replace(/\./g, '');
+
+    return cleaned;
+}
+
+function exportToCSV() {
+    const rows = transactionsTbody.querySelectorAll('tr');
+
+    // Check if there are transactions to export
+    if (rows.length === 0 || rows[0].querySelector('td[colspan]')) {
+        alert('Nessuna transazione da esportare');
+        return;
+    }
+
+    // CSV header
+    const csvHeaders = ['Data', 'Banca', 'Descrizione', 'Merchant', 'Categoria', 'Entrate (€)', 'Uscite (€)'];
+    const csvRows = [csvHeaders];
+
+    // Extract data from each visible row
+    rows.forEach(row => {
+        // Skip message rows
+        if (row.querySelector('td[colspan]')) return;
+
+        const cells = row.querySelectorAll('td');
+
+        // Extract date (remove time if present)
+        const dateText = cells[0]?.textContent.trim() || '';
+
+        // Extract bank (from badge)
+        const bankBadge = cells[1]?.querySelector('.badge');
+        const bank = bankBadge?.textContent.trim() || '';
+
+        // Extract description and merchant
+        const descriptionDiv = cells[2]?.querySelector('div[title]');
+        const description = descriptionDiv?.getAttribute('title') || cells[2]?.textContent.trim().split('\n')[0] || '';
+        const merchantDiv = cells[2]?.querySelector('.text-gray-500');
+        const merchant = merchantDiv?.textContent.trim() || '';
+
+        // Extract category
+        const categorySpan = cells[3]?.querySelector('span');
+        const category = categorySpan?.textContent.trim() || '';
+
+        // Extract amounts and convert from Italian format (1.234,56) to standard format (1234.56)
+        const entrateText = cells[4]?.textContent.trim() || '';
+        const entrate = (entrateText && entrateText !== '-' && entrateText !== '—')
+            ? formatAmountForCSV(entrateText)
+            : '';
+
+        const usciteText = cells[5]?.textContent.trim() || '';
+        const uscite = (usciteText && usciteText !== '-' && usciteText !== '—')
+            ? formatAmountForCSV(usciteText)
+            : '';
+
+        // Create CSV row (escape quotes in text fields)
+        const csvRow = [
+            dateText,
+            bank,
+            `"${description.replace(/"/g, '""')}"`, // Escape quotes
+            `"${merchant.replace(/"/g, '""')}"`,    // Escape quotes
+            category,
+            entrate,
+            uscite
+        ];
+
+        csvRows.push(csvRow);
+    });
+
+    // Convert to CSV string using semicolon separator (for Italian Excel compatibility)
+    const csvContent = csvRows.map(row => row.join(';')).join('\n');
+
+    // Create download
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel UTF-8
+    const link = document.createElement('a');
+
+    // Generate filename with current date and filters info
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    let filename = `transazioni_${dateStr}`;
+
+    // Add filter info to filename
+    if (filterBank.value) filename += `_${filterBank.value}`;
+    if (selectedMonth) filename += `_${selectedMonth}`;
+
+    filename += '.csv';
+
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.style.display = 'none';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Clean up
+    URL.revokeObjectURL(link.href);
+}
+
 // Load transactions on page load
 document.addEventListener('DOMContentLoaded', () => {
     generateMonthFilters(); // Generate month filter buttons
