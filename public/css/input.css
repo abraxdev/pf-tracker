@@ -49,12 +49,19 @@
     @apply antialiased;
     font-family: var(--font-sans);
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; /* Inter features */
+    background-color: #e9e1f4;
+    background: radial-gradient(circle, transparent 20%, #e9e1f4 20%, #e9e1f4 80%, transparent 80%, transparent), radial-gradient(circle, transparent 20%, #e9e1f4 20%, #e9e1f4 80%, transparent 80%, transparent) 10px 10px, linear-gradient(#d0bfe0 0.8px, transparent 0.8px) 0 -0.4px, linear-gradient(90deg, #d0bfe0 0.8px, #e9e1f4 0.8px) -0.4px 0;
+    background-size: 20px 20px, 20px 20px, 10px 10px, 10px 10px;
   }
 
   /* Better number rendering */
   .font-mono, .tabular-nums {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
+  }
+
+  h1, h2, h3, h4,h5, h6 {
+    font-family: var(--font-mono);
   }
 }
 
@@ -487,7 +494,10 @@
 
   /* Excluded/Inactive transaction styling */
   .transaction-row-excluded {
-    @apply bg-gray-100 opacity-60;
+    background-color: #e6e6f1;
+    opacity: 0.6;
+    background-size: 7px 7px;
+    background-image: repeating-linear-gradient(45deg, #bec4cd 0, #bec4cd 0.7000000000000001px, #e6e6f1 0, #e6e6f1 50%);
   }
 
   .transaction-row-excluded:hover {
