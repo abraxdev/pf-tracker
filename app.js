@@ -39,6 +39,10 @@ hbs.registerHelper('gt', function(a, b) {
     return a > b;
 });
 
+hbs.registerHelper('eq', function(a, b) {
+    return a === b;
+});
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

@@ -141,6 +141,9 @@ module.exports = {
     // Spinners
     'spinner',
     'spinner-lg',
+    // Navigation
+    'nav-link',
+    'nav-link-active',
   ],
   theme: {
     extend: {

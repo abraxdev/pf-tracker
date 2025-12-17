@@ -479,6 +479,25 @@
   }
 
   /* ========================================
+     NAVIGATION LINKS - Top Menu Style
+     ======================================== */
+
+  .nav-link {
+    @apply relative px-4 py-2 text-sm font-medium text-gray-600
+           hover:text-primary transition-all duration-200
+           rounded-lg;
+  }
+
+  .nav-link-active {
+    @apply text-primary bg-purple-50;
+    font-weight: 600;
+  }
+
+  .nav-link:hover:not(.nav-link-active) {
+    @apply bg-gray-50;
+  }
+
+  /* ========================================
      TRANSACTION ROWS - Actions & States
      ======================================== */
 

@@ -7,12 +7,14 @@ router.get('/', async (req, res) => {
         // Render empty page - transactions will be loaded via JavaScript for consistent pagination
         res.render('transactions', {
             title: 'Transazioni - Personal Finance Tracker',
+            activePage: 'transactions',
             transactions: []
         });
     } catch (error) {
         console.error('Error loading transactions:', error);
         res.render('transactions', {
             title: 'Transazioni - Personal Finance Tracker',
+            activePage: 'transactions',
             transactions: [],
             error: error.message
         });

@@ -64,6 +64,7 @@ router.get('/', async (req, res) => {
 
         res.render('index', {
             title: 'Dashboard - Personal Finance Tracker',
+            activePage: 'dashboard',
             stats,
             topCategories,
             currentMonth: now.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
@@ -72,6 +73,7 @@ router.get('/', async (req, res) => {
         console.error('Error loading dashboard:', error);
         res.render('index', {
             title: 'Dashboard - Personal Finance Tracker',
+            activePage: 'dashboard',
             error: error.message
         });
     }

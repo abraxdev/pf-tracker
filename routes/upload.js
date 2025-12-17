@@ -48,7 +48,8 @@ const upload = multer({
 // Upload page
 router.get('/', (req, res) => {
     res.render('upload', {
-        title: 'Upload Files - Personal Finance Tracker'
+        title: 'Upload Files - Personal Finance Tracker',
+        activePage: 'upload'
     });
 });
 

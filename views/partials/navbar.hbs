@@ -1,21 +1,19 @@
 <nav class="bg-white shadow-sm border-b border-gray-200">
     <div class="container mx-auto px-4">
         <div class="flex justify-between items-center h-16">
-            <div class="flex items-center space-x-8">
-                <a href="/" class="text-2xl font-bold text-primary font-mono">
-                    Finance Tracker
+            <a href="/" class="text-2xl font-bold text-primary font-mono">
+                Finance Tracker
+            </a>
+            <div class="flex space-x-1">
+                <a href="/" class="nav-link {{#if (eq activePage 'dashboard')}}nav-link-active{{/if}}">
+                    Dashboard
                 </a>
-                <div class="hidden md:flex space-x-4">
-                    <a href="/" class="text-gray-700 hover:text-primary transition-colors px-3 py-2">
-                        Dashboard
-                    </a>
-                    <a href="/upload" class="text-gray-700 hover:text-primary transition-colors px-3 py-2">
-                        Upload
-                    </a>
-                    <a href="/transactions" class="text-gray-700 hover:text-primary transition-colors px-3 py-2">
-                        Transazioni
-                    </a>
-                </div>
+                <a href="/upload" class="nav-link {{#if (eq activePage 'upload')}}nav-link-active{{/if}}">
+                    Upload
+                </a>
+                <a href="/transactions" class="nav-link {{#if (eq activePage 'transactions')}}nav-link-active{{/if}}">
+                    Transazioni
+                </a>
             </div>
         </div>
     </div>
