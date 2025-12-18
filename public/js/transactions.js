@@ -1457,6 +1457,87 @@ const chartColors = {
     ]
 };
 
+// Common tooltip configuration for pie/donut charts
+const getCommonTooltipPie = () => ({
+    custom: function({ series, seriesIndex, dataPointIndex, w }) {
+        // For pie/donut charts, seriesIndex IS the slice index
+        const label = w.globals.labels[seriesIndex] || w.config.labels[seriesIndex] || 'N/A';
+        const value = series[seriesIndex];
+        const formattedValue = formatCurrency(value);
+
+        return `
+            <div style="
+                background: #ffffff;
+                color: #1f2937;
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 12px;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            ">
+                <div style="font-weight: 600; margin-bottom: 4px;">${label}</div>
+                <div style="color: #333333;">${formattedValue}</div>
+            </div>
+        `;
+    }
+});
+
+// Common tooltip configuration for bar charts
+const getCommonTooltipBar = () => ({
+    custom: function({ series, seriesIndex, dataPointIndex, w }) {
+        const seriesName = w.globals.seriesNames[seriesIndex] || 'N/A';
+        const categoryLabel = w.globals.labels[dataPointIndex] || 'N/A';
+        const value = series[seriesIndex][dataPointIndex];
+        const formattedValue = formatCurrency(value);
+
+        return `
+            <div style="
+                background: #ffffff;
+                color: #1f2937;
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 12px;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            ">
+                <div style="font-weight: 600; margin-bottom: 4px;">${categoryLabel}</div>
+                <div style="color: #333333;">${seriesName}: ${formattedValue}</div>
+            </div>
+        `;
+    }
+});
+
+// Common tooltip configuration for multi-line charts (shows all series)
+const getCommonTooltipMultiLine = () => ({
+    custom: function({ series, seriesIndex, dataPointIndex, w }) {
+        const categoryLabel = w.globals.labels[dataPointIndex] || 'N/A';
+
+        // Build HTML for all series at this data point
+        let seriesHTML = '';
+        series.forEach((seriesData, idx) => {
+            const seriesName = w.globals.seriesNames[idx] || 'N/A';
+            const value = seriesData[dataPointIndex];
+            const formattedValue = formatCurrency(value);
+            seriesHTML += `<div style="color: #333333; margin-top: 4px;">${seriesName}: ${formattedValue}</div>`;
+        });
+
+        return `
+            <div style="
+                background: #ffffff;
+                color: #1f2937;
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 12px;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            ">
+                <div style="font-weight: 600; margin-bottom: 4px;">${categoryLabel}</div>
+                ${seriesHTML}
+            </div>
+        `;
+    }
+});
+
 function renderTotalsChart(data) {
     const totalIncome = data.activeTransactions.reduce((sum, t) => sum + t.amountIn, 0);
     const totalExpenses = data.activeTransactions.reduce((sum, t) => sum + t.amountOut, 0);
@@ -1514,11 +1595,7 @@ function renderTotalsChart(data) {
         legend: {
             show: false
         },
-        tooltip: {
-            y: {
-                formatter: (val) => formatCurrency(val)
-            }
-        }
+        tooltip: getCommonTooltipBar()
     };
 
     destroyChart('chart-totals');
@@ -1541,12 +1618,7 @@ function renderBalanceChart(data) {
         labels: ['Entrate', 'Uscite'],
         colors: [chartColors.income, chartColors.expense],
         dataLabels: {
-            enabled: true,
-            formatter: (val) => val.toFixed(1) + '%',
-            style: {
-                fontSize: '14px',
-                fontWeight: 600
-            }
+            enabled: false  // Disabled: no percentages on slices
         },
         plotOptions: {
             pie: {
@@ -1583,11 +1655,7 @@ function renderBalanceChart(data) {
             fontSize: '13px',
             fontWeight: 500
         },
-        tooltip: {
-            y: {
-                formatter: (val) => formatCurrency(val)
-            }
-        }
+        tooltip: getCommonTooltipPie()
     };
 
     destroyChart('chart-balance');
@@ -1625,12 +1693,7 @@ function renderExpensesCategoriesChart(data) {
         labels: categories,
         colors: chartColors.categories,
         dataLabels: {
-            enabled: true,
-            formatter: (val) => val.toFixed(1) + '%',
-            style: {
-                fontSize: '12px',
-                fontWeight: 600
-            }
+            enabled: false  // Disabled: no percentages on slices
         },
         plotOptions: {
             pie: {
@@ -1666,11 +1729,7 @@ function renderExpensesCategoriesChart(data) {
             fontSize: '12px',
             fontWeight: 500
         },
-        tooltip: {
-            y: {
-                formatter: (val) => formatCurrency(val)
-            }
-        }
+        tooltip: getCommonTooltipPie()
     };
 
     destroyChart('chart-expenses-categories');
@@ -1708,12 +1767,7 @@ function renderIncomeCategoriesChart(data) {
         labels: categories,
         colors: chartColors.categories,
         dataLabels: {
-            enabled: true,
-            formatter: (val) => val.toFixed(1) + '%',
-            style: {
-                fontSize: '12px',
-                fontWeight: 600
-            }
+            enabled: false  // Disabled: no percentages on slices
         },
         plotOptions: {
             pie: {
@@ -1749,11 +1803,7 @@ function renderIncomeCategoriesChart(data) {
             fontSize: '12px',
             fontWeight: 500
         },
-        tooltip: {
-            y: {
-                formatter: (val) => formatCurrency(val)
-            }
-        }
+        tooltip: getCommonTooltipPie()
     };
 
     destroyChart('chart-income-categories');
@@ -1876,11 +1926,7 @@ function renderPassiveMonthlyChart(passiveTransactions) {
             fontSize: '12px',
             fontWeight: 500
         },
-        tooltip: {
-            y: {
-                formatter: (val) => formatCurrency(val)
-            }
-        }
+        tooltip: getCommonTooltipBar()
     };
 
     destroyChart('chart-passive-monthly');
@@ -1916,12 +1962,7 @@ function renderPassiveBreakdownChart(passiveTransactions) {
         labels: categories,
         colors: chartColors.categories.slice(0, categories.length),
         dataLabels: {
-            enabled: true,
-            formatter: (val) => val.toFixed(1) + '%',
-            style: {
-                fontSize: '12px',
-                fontWeight: 600
-            }
+            enabled: false  // Disabled: no percentages on slices
         },
         plotOptions: {
             pie: {
@@ -1957,11 +1998,7 @@ function renderPassiveBreakdownChart(passiveTransactions) {
             fontSize: '12px',
             fontWeight: 500
         },
-        tooltip: {
-            y: {
-                formatter: (val) => formatCurrency(val)
-            }
-        }
+        tooltip: getCommonTooltipPie()
     };
 
     destroyChart('chart-passive-breakdown');
@@ -2056,11 +2093,7 @@ function renderMonthlyTrendsChart(data) {
             fontSize: '13px',
             fontWeight: 600
         },
-        tooltip: {
-            y: {
-                formatter: (val) => formatCurrency(val)
-            }
-        },
+        tooltip: getCommonTooltipMultiLine(),
         grid: {
             borderColor: '#f1f5f9'
         }
@@ -2095,23 +2128,14 @@ function renderBanksCharts(data) {
         labels: banks,
         colors: chartColors.categories.slice(0, banks.length),
         dataLabels: {
-            enabled: true,
-            formatter: (val) => val.toFixed(1) + '%',
-            style: {
-                fontSize: '12px',
-                fontWeight: 600
-            }
+            enabled: false
         },
         legend: {
             position: 'bottom',
             fontSize: '13px',
             fontWeight: 500
         },
-        tooltip: {
-            y: {
-                formatter: (val) => formatCurrency(val)
-            }
-        }
+        tooltip: getCommonTooltipPie()
     };
 
     destroyChart('chart-banks-distribution');
@@ -2184,11 +2208,7 @@ function renderBanksCharts(data) {
             fontSize: '13px',
             fontWeight: 600
         },
-        tooltip: {
-            y: {
-                formatter: (val) => formatCurrency(val)
-            }
-        }
+        tooltip: getCommonTooltipBar()
     };
 
     destroyChart('chart-banks-flow');
