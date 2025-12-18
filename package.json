@@ -21,6 +21,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
     "@supabase/supabase-js": "^2.39.0",
+    "apexcharts": "^5.3.6",
     "axios": "^1.6.2",
     "csv-parser": "^3.0.0",
     "date-fns": "^2.30.0",

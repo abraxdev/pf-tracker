@@ -880,7 +880,1019 @@ function exportToCSV() {
 
 // Load transactions on page load
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOMContentLoaded - ApexCharts disponibile?', typeof ApexCharts !== 'undefined');
     generateMonthFilters(); // Generate month filter buttons
     await initializeMultiSelects(); // Initialize multi-select dropdowns
     loadTransactions(true);
+    initializeGraphsOverlay(); // Initialize graphs overlay
 });
+
+// ============================================
+// GRAPHS OVERLAY FUNCTIONALITY
+// ============================================
+
+let chartInstances = {}; // Store chart instances for cleanup
+
+function initializeGraphsOverlay() {
+    const viewGraphBtn = document.getElementById('view-graph');
+    const closeGraphsBtn = document.getElementById('close-graphs');
+
+    // Open overlay
+    if (viewGraphBtn) {
+        viewGraphBtn.addEventListener('click', () => {
+            openGraphsOverlay();
+        });
+    }
+
+    // Close overlay
+    if (closeGraphsBtn) {
+        closeGraphsBtn.addEventListener('click', () => {
+            closeGraphsOverlay();
+        });
+    }
+
+    // Initialize tabs
+    initializeGraphsTabs();
+}
+
+function openGraphsOverlay() {
+    const graphsOverlay = document.getElementById('graphs-overlay');
+
+    // Check if ApexCharts is loaded
+    if (typeof ApexCharts === 'undefined') {
+        console.error('ApexCharts library is not loaded!');
+        alert('Errore: Libreria grafici non caricata. Ricarica la pagina.');
+        return;
+    }
+
+    // Extract data from visible transactions
+    const transactionsData = extractTransactionsData();
+
+    if (!transactionsData || transactionsData.activeTransactions.length === 0) {
+        alert('Nessuna transazione attiva da visualizzare');
+        return;
+    }
+
+    // Update period text
+    updatePeriodText(transactionsData);
+
+    // Show/hide conditional tabs
+    updateConditionalTabs(transactionsData);
+
+    // Render all charts
+    renderAllCharts(transactionsData);
+
+    // Show overlay
+    graphsOverlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+function closeGraphsOverlay() {
+    const graphsOverlay = document.getElementById('graphs-overlay');
+    graphsOverlay.classList.add('hidden');
+    document.body.style.overflow = ''; // Restore scrolling
+
+    // Cleanup chart instances
+    Object.values(chartInstances).forEach(chart => {
+        if (chart && chart.destroy) {
+            chart.destroy();
+        }
+    });
+    chartInstances = {};
+}
+
+function initializeGraphsTabs() {
+    const tabs = document.querySelectorAll('.graphs-tab');
+    const contents = document.querySelectorAll('.graphs-tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetTab = tab.dataset.tab;
+
+            // Remove active class from all tabs and contents
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+
+            // Add active class to clicked tab and corresponding content
+            tab.classList.add('active');
+            const targetContent = document.querySelector(`[data-content="${targetTab}"]`);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
+}
+
+function extractTransactionsData() {
+    const rows = transactionsTbody.querySelectorAll('tr');
+
+    if (rows.length === 0 || rows[0].querySelector('td[colspan]')) {
+        return null;
+    }
+
+    const allTransactions = [];
+    const activeTransactions = [];
+
+    rows.forEach(row => {
+        if (row.querySelector('td[colspan]')) return;
+
+        const status = row.dataset.status;
+        const isActive = status === 'active';
+
+        const cells = row.querySelectorAll('td');
+
+        // Extract date
+        const dateText = cells[0]?.textContent.trim() || '';
+
+        // Extract bank
+        const bankBadge = cells[1]?.querySelector('.badge');
+        const bank = bankBadge?.textContent.trim() || '';
+
+        // Extract category
+        const categorySpan = cells[3]?.querySelector('span');
+        const category = categorySpan?.textContent.trim() || 'uncategorized';
+
+        // Extract amounts
+        const entrateText = cells[4]?.textContent.trim() || '';
+        const entrate = (entrateText && entrateText !== '-' && entrateText !== '—')
+            ? parseFloat(entrateText.replace('€', '').replace(/\./g, '').replace(',', '.').trim())
+            : 0;
+
+        const usciteText = cells[5]?.textContent.trim() || '';
+        const uscite = (usciteText && usciteText !== '-' && usciteText !== '—')
+            ? parseFloat(usciteText.replace('€', '').replace(/\./g, '').replace(',', '.').trim())
+            : 0;
+
+        const transaction = {
+            date: dateText,
+            bank,
+            category,
+            amountIn: entrate,
+            amountOut: uscite,
+            status,
+            isActive
+        };
+
+        allTransactions.push(transaction);
+        if (isActive) {
+            activeTransactions.push(transaction);
+        }
+    });
+
+    return {
+        allTransactions,
+        activeTransactions
+    };
+}
+
+function updatePeriodText(data) {
+    const periodElement = document.getElementById('graphs-period');
+    const dates = data.activeTransactions.map(t => t.date);
+
+    if (dates.length === 0) {
+        periodElement.textContent = 'Nessun periodo';
+        return;
+    }
+
+    // Parse dates and find min/max
+    const parsedDates = dates.map(d => {
+        const parts = d.split('/');
+        return new Date(parts[2], parts[1] - 1, parts[0]);
+    });
+
+    const minDate = new Date(Math.min(...parsedDates));
+    const maxDate = new Date(Math.max(...parsedDates));
+
+    const formatDate = (date) => {
+        return date.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
+    };
+
+    if (minDate.getTime() === maxDate.getTime()) {
+        periodElement.textContent = `Periodo: ${formatDate(minDate)} • ${data.activeTransactions.length} transazioni attive`;
+    } else {
+        periodElement.textContent = `Periodo: ${formatDate(minDate)} - ${formatDate(maxDate)} • ${data.activeTransactions.length} transazioni attive`;
+    }
+}
+
+function updateConditionalTabs(data) {
+    const trendsTab = document.getElementById('trends-tab');
+    const banksTab = document.getElementById('banks-tab');
+
+    // Check if there are multiple months
+    const months = new Set();
+    data.activeTransactions.forEach(t => {
+        const parts = t.date.split('/');
+        const monthYear = `${parts[1]}/${parts[2]}`;
+        months.add(monthYear);
+    });
+
+    if (months.size > 1) {
+        trendsTab.style.display = 'flex';
+    } else {
+        trendsTab.style.display = 'none';
+    }
+
+    // Check if there are multiple banks
+    const banks = new Set(data.activeTransactions.map(t => t.bank));
+    if (banks.size > 1) {
+        banksTab.style.display = 'flex';
+    } else {
+        banksTab.style.display = 'none';
+    }
+}
+
+function renderAllCharts(data) {
+    // Overview charts
+    renderTotalsChart(data);
+    renderBalanceChart(data);
+
+    // Categories charts
+    renderExpensesCategoriesChart(data);
+    renderIncomeCategoriesChart(data);
+
+    // Passive income charts
+    renderPassiveIncomeCharts(data);
+
+    // Conditional charts
+    const months = new Set();
+    data.activeTransactions.forEach(t => {
+        const parts = t.date.split('/');
+        const monthYear = `${parts[1]}/${parts[2]}`;
+        months.add(monthYear);
+    });
+
+    if (months.size > 1) {
+        renderMonthlyTrendsChart(data);
+    }
+
+    const banks = new Set(data.activeTransactions.map(t => t.bank));
+    if (banks.size > 1) {
+        renderBanksCharts(data);
+    }
+}
+
+// Chart color palette (harmonious with purple theme)
+const chartColors = {
+    income: '#10b981', // Green
+    expense: '#ef4444', // Red
+    balance: '#8b5cf6', // Purple
+    passive: '#f59e0b', // Amber
+    categories: [
+        '#8b5cf6', // Purple
+        '#06b6d4', // Cyan
+        '#f59e0b', // Amber
+        '#ec4899', // Pink
+        '#10b981', // Green
+        '#6366f1', // Indigo
+        '#f97316', // Orange
+        '#14b8a6', // Teal
+        '#a855f7', // Violet
+        '#84cc16', // Lime
+    ]
+};
+
+function renderTotalsChart(data) {
+    const totalIncome = data.activeTransactions.reduce((sum, t) => sum + t.amountIn, 0);
+    const totalExpenses = data.activeTransactions.reduce((sum, t) => sum + t.amountOut, 0);
+
+    const options = {
+        series: [{
+            name: 'Importo',
+            data: [totalIncome, totalExpenses]
+        }],
+        chart: {
+            type: 'bar',
+            height: 350,
+            toolbar: { show: false },
+            fontFamily: 'Inter, sans-serif'
+        },
+        colors: [chartColors.income, chartColors.expense],
+        plotOptions: {
+            bar: {
+                distributed: true,
+                horizontal: false,
+                borderRadius: 8,
+                dataLabels: {
+                    position: 'top'
+                }
+            }
+        },
+        dataLabels: {
+            enabled: true,
+            formatter: (val) => formatCurrency(val),
+            offsetY: -25,
+            style: {
+                fontSize: '12px',
+                fontWeight: 600,
+                fontFamily: 'JetBrains Mono, monospace'
+            }
+        },
+        xaxis: {
+            categories: ['Entrate', 'Uscite'],
+            labels: {
+                style: {
+                    fontSize: '13px',
+                    fontWeight: 600
+                }
+            }
+        },
+        yaxis: {
+            labels: {
+                formatter: (val) => formatCurrency(val),
+                style: {
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: '11px'
+                }
+            }
+        },
+        legend: {
+            show: false
+        },
+        tooltip: {
+            y: {
+                formatter: (val) => formatCurrency(val)
+            }
+        }
+    };
+
+    destroyChart('chart-totals');
+    chartInstances['chart-totals'] = new ApexCharts(document.querySelector('#chart-totals'), options);
+    chartInstances['chart-totals'].render();
+}
+
+function renderBalanceChart(data) {
+    const totalIncome = data.activeTransactions.reduce((sum, t) => sum + t.amountIn, 0);
+    const totalExpenses = data.activeTransactions.reduce((sum, t) => sum + t.amountOut, 0);
+    const balance = totalIncome - totalExpenses;
+
+    const options = {
+        series: [totalIncome, totalExpenses],
+        chart: {
+            type: 'donut',
+            height: 350,
+            fontFamily: 'Inter, sans-serif'
+        },
+        labels: ['Entrate', 'Uscite'],
+        colors: [chartColors.income, chartColors.expense],
+        dataLabels: {
+            enabled: true,
+            formatter: (val) => val.toFixed(1) + '%',
+            style: {
+                fontSize: '14px',
+                fontWeight: 600
+            }
+        },
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '65%',
+                    labels: {
+                        show: true,
+                        name: {
+                            show: true,
+                            fontSize: '16px',
+                            fontWeight: 600
+                        },
+                        value: {
+                            show: true,
+                            fontSize: '20px',
+                            fontWeight: 700,
+                            fontFamily: 'JetBrains Mono, monospace',
+                            formatter: (val) => formatCurrency(parseFloat(val))
+                        },
+                        total: {
+                            show: true,
+                            label: 'Bilancio',
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            color: balance >= 0 ? chartColors.income : chartColors.expense,
+                            formatter: () => formatCurrency(balance)
+                        }
+                    }
+                }
+            }
+        },
+        legend: {
+            position: 'bottom',
+            fontSize: '13px',
+            fontWeight: 500
+        },
+        tooltip: {
+            y: {
+                formatter: (val) => formatCurrency(val)
+            }
+        }
+    };
+
+    destroyChart('chart-balance');
+    chartInstances['chart-balance'] = new ApexCharts(document.querySelector('#chart-balance'), options);
+    chartInstances['chart-balance'].render();
+}
+
+function renderExpensesCategoriesChart(data) {
+    const expensesByCategory = {};
+
+    data.activeTransactions.forEach(t => {
+        if (t.amountOut > 0) {
+            if (!expensesByCategory[t.category]) {
+                expensesByCategory[t.category] = 0;
+            }
+            expensesByCategory[t.category] += t.amountOut;
+        }
+    });
+
+    const categories = Object.keys(expensesByCategory).sort((a, b) => expensesByCategory[b] - expensesByCategory[a]);
+    const values = categories.map(cat => expensesByCategory[cat]);
+
+    if (categories.length === 0) {
+        document.querySelector('#chart-expenses-categories').innerHTML = '<p class="text-center text-gray-500 py-8">Nessuna uscita da visualizzare</p>';
+        return;
+    }
+
+    const options = {
+        series: values,
+        chart: {
+            type: 'donut',
+            height: 400,
+            fontFamily: 'Inter, sans-serif'
+        },
+        labels: categories,
+        colors: chartColors.categories,
+        dataLabels: {
+            enabled: true,
+            formatter: (val) => val.toFixed(1) + '%',
+            style: {
+                fontSize: '12px',
+                fontWeight: 600
+            }
+        },
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '60%',
+                    labels: {
+                        show: true,
+                        name: {
+                            show: true,
+                            fontSize: '14px',
+                            fontWeight: 600
+                        },
+                        value: {
+                            show: true,
+                            fontSize: '18px',
+                            fontWeight: 700,
+                            fontFamily: 'JetBrains Mono, monospace',
+                            formatter: (val) => formatCurrency(parseFloat(val))
+                        },
+                        total: {
+                            show: true,
+                            label: 'Totale Uscite',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            formatter: () => formatCurrency(values.reduce((a, b) => a + b, 0))
+                        }
+                    }
+                }
+            }
+        },
+        legend: {
+            position: 'bottom',
+            fontSize: '12px',
+            fontWeight: 500
+        },
+        tooltip: {
+            y: {
+                formatter: (val) => formatCurrency(val)
+            }
+        }
+    };
+
+    destroyChart('chart-expenses-categories');
+    chartInstances['chart-expenses-categories'] = new ApexCharts(document.querySelector('#chart-expenses-categories'), options);
+    chartInstances['chart-expenses-categories'].render();
+}
+
+function renderIncomeCategoriesChart(data) {
+    const incomeByCategory = {};
+
+    data.activeTransactions.forEach(t => {
+        if (t.amountIn > 0) {
+            if (!incomeByCategory[t.category]) {
+                incomeByCategory[t.category] = 0;
+            }
+            incomeByCategory[t.category] += t.amountIn;
+        }
+    });
+
+    const categories = Object.keys(incomeByCategory).sort((a, b) => incomeByCategory[b] - incomeByCategory[a]);
+    const values = categories.map(cat => incomeByCategory[cat]);
+
+    if (categories.length === 0) {
+        document.querySelector('#chart-income-categories').innerHTML = '<p class="text-center text-gray-500 py-8">Nessuna entrata da visualizzare</p>';
+        return;
+    }
+
+    const options = {
+        series: values,
+        chart: {
+            type: 'donut',
+            height: 400,
+            fontFamily: 'Inter, sans-serif'
+        },
+        labels: categories,
+        colors: chartColors.categories,
+        dataLabels: {
+            enabled: true,
+            formatter: (val) => val.toFixed(1) + '%',
+            style: {
+                fontSize: '12px',
+                fontWeight: 600
+            }
+        },
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '60%',
+                    labels: {
+                        show: true,
+                        name: {
+                            show: true,
+                            fontSize: '14px',
+                            fontWeight: 600
+                        },
+                        value: {
+                            show: true,
+                            fontSize: '18px',
+                            fontWeight: 700,
+                            fontFamily: 'JetBrains Mono, monospace',
+                            formatter: (val) => formatCurrency(parseFloat(val))
+                        },
+                        total: {
+                            show: true,
+                            label: 'Totale Entrate',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            formatter: () => formatCurrency(values.reduce((a, b) => a + b, 0))
+                        }
+                    }
+                }
+            }
+        },
+        legend: {
+            position: 'bottom',
+            fontSize: '12px',
+            fontWeight: 500
+        },
+        tooltip: {
+            y: {
+                formatter: (val) => formatCurrency(val)
+            }
+        }
+    };
+
+    destroyChart('chart-income-categories');
+    chartInstances['chart-income-categories'] = new ApexCharts(document.querySelector('#chart-income-categories'), options);
+    chartInstances['chart-income-categories'].render();
+}
+
+function renderPassiveIncomeCharts(data) {
+    // Identify passive income transactions (dividends and interest)
+    const passiveCategories = ['investments', 'dividend', 'interest'];
+
+    const passiveTransactions = data.activeTransactions.filter(t => {
+        return t.amountIn > 0 && passiveCategories.some(cat =>
+            t.category.toLowerCase().includes(cat)
+        );
+    });
+
+    // Render breakdown by category as pie chart
+    renderPassiveBreakdownChart(passiveTransactions);
+
+    // Render monthly progression as stacked bar chart
+    renderPassiveMonthlyChart(passiveTransactions);
+}
+
+function renderPassiveMonthlyChart(passiveTransactions) {
+    if (passiveTransactions.length === 0) {
+        document.querySelector('#chart-passive-monthly').innerHTML = '<p class="text-center text-gray-500 py-8">Nessun reddito passivo da visualizzare</p>';
+        return;
+    }
+
+    // Group by month and category
+    const monthlyData = {};
+    const categoriesSet = new Set();
+
+    passiveTransactions.forEach(t => {
+        const parts = t.date.split('/');
+        const monthYear = `${parts[1]}/${parts[2]}`;
+
+        if (!monthlyData[monthYear]) {
+            monthlyData[monthYear] = {};
+        }
+
+        if (!monthlyData[monthYear][t.category]) {
+            monthlyData[monthYear][t.category] = 0;
+        }
+
+        monthlyData[monthYear][t.category] += t.amountIn;
+        categoriesSet.add(t.category);
+    });
+
+    // Sort months chronologically
+    const sortedMonths = Object.keys(monthlyData).sort((a, b) => {
+        const [monthA, yearA] = a.split('/');
+        const [monthB, yearB] = b.split('/');
+        return new Date(yearA, monthA - 1) - new Date(yearB, monthB - 1);
+    });
+
+    // Format month labels
+    const monthLabels = sortedMonths.map(m => {
+        const [month, year] = m.split('/');
+        const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+        return `${monthNames[parseInt(month) - 1]} ${year}`;
+    });
+
+    // Create series for each category
+    const categories = Array.from(categoriesSet).sort();
+    const series = categories.map(category => ({
+        name: category,
+        data: sortedMonths.map(month => monthlyData[month][category] || 0)
+    }));
+
+    const options = {
+        series: series,
+        chart: {
+            type: 'bar',
+            height: 400,
+            stacked: true,
+            toolbar: { show: true },
+            fontFamily: 'Inter, sans-serif'
+        },
+        colors: chartColors.categories.slice(0, categories.length),
+        plotOptions: {
+            bar: {
+                horizontal: false,
+                columnWidth: '60%',
+                borderRadius: 6,
+                borderRadiusApplication: 'end'
+            }
+        },
+        dataLabels: {
+            enabled: false
+        },
+        xaxis: {
+            categories: monthLabels,
+            labels: {
+                style: {
+                    fontSize: '11px',
+                    fontWeight: 500
+                }
+            }
+        },
+        yaxis: {
+            title: {
+                text: 'Importo (€)',
+                style: {
+                    fontSize: '12px',
+                    fontWeight: 600
+                }
+            },
+            labels: {
+                formatter: (val) => formatCurrency(val),
+                style: {
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: '10px'
+                }
+            }
+        },
+        legend: {
+            position: 'bottom',
+            fontSize: '12px',
+            fontWeight: 500
+        },
+        tooltip: {
+            y: {
+                formatter: (val) => formatCurrency(val)
+            }
+        }
+    };
+
+    destroyChart('chart-passive-monthly');
+    chartInstances['chart-passive-monthly'] = new ApexCharts(document.querySelector('#chart-passive-monthly'), options);
+    chartInstances['chart-passive-monthly'].render();
+}
+
+function renderPassiveBreakdownChart(passiveTransactions) {
+    if (passiveTransactions.length === 0) {
+        document.querySelector('#chart-passive-breakdown').innerHTML = '<p class="text-center text-gray-500 py-8">Nessun reddito passivo da visualizzare</p>';
+        return;
+    }
+
+    // Group by category
+    const byCategory = {};
+    passiveTransactions.forEach(t => {
+        if (!byCategory[t.category]) {
+            byCategory[t.category] = 0;
+        }
+        byCategory[t.category] += t.amountIn;
+    });
+
+    const categories = Object.keys(byCategory).sort((a, b) => byCategory[b] - byCategory[a]);
+    const values = categories.map(cat => byCategory[cat]);
+
+    const options = {
+        series: values,
+        chart: {
+            type: 'donut',
+            height: 400,
+            fontFamily: 'Inter, sans-serif'
+        },
+        labels: categories,
+        colors: chartColors.categories.slice(0, categories.length),
+        dataLabels: {
+            enabled: true,
+            formatter: (val) => val.toFixed(1) + '%',
+            style: {
+                fontSize: '12px',
+                fontWeight: 600
+            }
+        },
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '60%',
+                    labels: {
+                        show: true,
+                        name: {
+                            show: true,
+                            fontSize: '14px',
+                            fontWeight: 600
+                        },
+                        value: {
+                            show: true,
+                            fontSize: '18px',
+                            fontWeight: 700,
+                            fontFamily: 'JetBrains Mono, monospace',
+                            formatter: (val) => formatCurrency(parseFloat(val))
+                        },
+                        total: {
+                            show: true,
+                            label: 'Totale Passivi',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            formatter: () => formatCurrency(values.reduce((a, b) => a + b, 0))
+                        }
+                    }
+                }
+            }
+        },
+        legend: {
+            position: 'bottom',
+            fontSize: '12px',
+            fontWeight: 500
+        },
+        tooltip: {
+            y: {
+                formatter: (val) => formatCurrency(val)
+            }
+        }
+    };
+
+    destroyChart('chart-passive-breakdown');
+    chartInstances['chart-passive-breakdown'] = new ApexCharts(document.querySelector('#chart-passive-breakdown'), options);
+    chartInstances['chart-passive-breakdown'].render();
+}
+
+function renderMonthlyTrendsChart(data) {
+    // Group transactions by month
+    const monthlyData = {};
+
+    data.activeTransactions.forEach(t => {
+        const parts = t.date.split('/');
+        const monthYear = `${parts[1]}/${parts[2]}`;
+
+        if (!monthlyData[monthYear]) {
+            monthlyData[monthYear] = { income: 0, expenses: 0 };
+        }
+
+        monthlyData[monthYear].income += t.amountIn;
+        monthlyData[monthYear].expenses += t.amountOut;
+    });
+
+    // Sort by date
+    const sortedMonths = Object.keys(monthlyData).sort((a, b) => {
+        const [monthA, yearA] = a.split('/');
+        const [monthB, yearB] = b.split('/');
+        return new Date(yearA, monthA - 1) - new Date(yearB, monthB - 1);
+    });
+
+    const incomeData = sortedMonths.map(m => monthlyData[m].income);
+    const expensesData = sortedMonths.map(m => monthlyData[m].expenses);
+
+    // Format month labels
+    const monthLabels = sortedMonths.map(m => {
+        const [month, year] = m.split('/');
+        const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+        return `${monthNames[parseInt(month) - 1]} ${year}`;
+    });
+
+    const options = {
+        series: [
+            {
+                name: 'Entrate',
+                data: incomeData
+            },
+            {
+                name: 'Uscite',
+                data: expensesData
+            }
+        ],
+        chart: {
+            type: 'line',
+            height: 400,
+            toolbar: { show: true },
+            fontFamily: 'Inter, sans-serif'
+        },
+        colors: [chartColors.income, chartColors.expense],
+        stroke: {
+            width: 3,
+            curve: 'smooth'
+        },
+        markers: {
+            size: 5,
+            hover: {
+                size: 7
+            }
+        },
+        dataLabels: {
+            enabled: false
+        },
+        xaxis: {
+            categories: monthLabels,
+            labels: {
+                style: {
+                    fontSize: '12px',
+                    fontWeight: 500
+                }
+            }
+        },
+        yaxis: {
+            labels: {
+                formatter: (val) => formatCurrency(val),
+                style: {
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: '11px'
+                }
+            }
+        },
+        legend: {
+            position: 'top',
+            fontSize: '13px',
+            fontWeight: 600
+        },
+        tooltip: {
+            y: {
+                formatter: (val) => formatCurrency(val)
+            }
+        },
+        grid: {
+            borderColor: '#f1f5f9'
+        }
+    };
+
+    destroyChart('chart-monthly-trends');
+    chartInstances['chart-monthly-trends'] = new ApexCharts(document.querySelector('#chart-monthly-trends'), options);
+    chartInstances['chart-monthly-trends'].render();
+}
+
+function renderBanksCharts(data) {
+    // Distribution chart
+    const bankTotals = {};
+
+    data.activeTransactions.forEach(t => {
+        if (!bankTotals[t.bank]) {
+            bankTotals[t.bank] = 0;
+        }
+        bankTotals[t.bank] += t.amountIn + t.amountOut;
+    });
+
+    const banks = Object.keys(bankTotals);
+    const totals = banks.map(b => bankTotals[b]);
+
+    const distributionOptions = {
+        series: totals,
+        chart: {
+            type: 'pie',
+            height: 350,
+            fontFamily: 'Inter, sans-serif'
+        },
+        labels: banks,
+        colors: chartColors.categories.slice(0, banks.length),
+        dataLabels: {
+            enabled: true,
+            formatter: (val) => val.toFixed(1) + '%',
+            style: {
+                fontSize: '12px',
+                fontWeight: 600
+            }
+        },
+        legend: {
+            position: 'bottom',
+            fontSize: '13px',
+            fontWeight: 500
+        },
+        tooltip: {
+            y: {
+                formatter: (val) => formatCurrency(val)
+            }
+        }
+    };
+
+    destroyChart('chart-banks-distribution');
+    chartInstances['chart-banks-distribution'] = new ApexCharts(document.querySelector('#chart-banks-distribution'), distributionOptions);
+    chartInstances['chart-banks-distribution'].render();
+
+    // Flow chart (income vs expenses per bank)
+    const bankFlows = {};
+
+    data.activeTransactions.forEach(t => {
+        if (!bankFlows[t.bank]) {
+            bankFlows[t.bank] = { income: 0, expenses: 0 };
+        }
+        bankFlows[t.bank].income += t.amountIn;
+        bankFlows[t.bank].expenses += t.amountOut;
+    });
+
+    const flowBanks = Object.keys(bankFlows);
+    const incomeByBank = flowBanks.map(b => bankFlows[b].income);
+    const expensesByBank = flowBanks.map(b => bankFlows[b].expenses);
+
+    const flowOptions = {
+        series: [
+            {
+                name: 'Entrate',
+                data: incomeByBank
+            },
+            {
+                name: 'Uscite',
+                data: expensesByBank
+            }
+        ],
+        chart: {
+            type: 'bar',
+            height: 350,
+            toolbar: { show: false },
+            fontFamily: 'Inter, sans-serif'
+        },
+        colors: [chartColors.income, chartColors.expense],
+        plotOptions: {
+            bar: {
+                horizontal: false,
+                borderRadius: 8,
+                columnWidth: '60%'
+            }
+        },
+        dataLabels: {
+            enabled: false
+        },
+        xaxis: {
+            categories: flowBanks,
+            labels: {
+                style: {
+                    fontSize: '12px',
+                    fontWeight: 500
+                }
+            }
+        },
+        yaxis: {
+            labels: {
+                formatter: (val) => formatCurrency(val),
+                style: {
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: '11px'
+                }
+            }
+        },
+        legend: {
+            position: 'top',
+            fontSize: '13px',
+            fontWeight: 600
+        },
+        tooltip: {
+            y: {
+                formatter: (val) => formatCurrency(val)
+            }
+        }
+    };
+
+    destroyChart('chart-banks-flow');
+    chartInstances['chart-banks-flow'] = new ApexCharts(document.querySelector('#chart-banks-flow'), flowOptions);
+    chartInstances['chart-banks-flow'].render();
+}
+
+function destroyChart(chartId) {
+    if (chartInstances[chartId]) {
+        chartInstances[chartId].destroy();
+        delete chartInstances[chartId];
+    }
+}
