@@ -47,6 +47,9 @@ async function initializeMultiSelects() {
         if (result.success) {
             const { banks, types, categories } = result.data;
 
+            // Store categories globally for edit mode
+            availableCategories = categories;
+
             // Initialize each multi-select
             initMultiSelect('bank', banks, 'Banca');
             initMultiSelect('type', types, 'Tipo');
@@ -474,7 +477,7 @@ function displayTransactions(transactions, replace = true) {
                 </td>
                 <td class="px-2 py-3 text-center">
                     <div class="row-actions opacity-0 transition-opacity flex items-center justify-center gap-0.5">
-                        <button class="action-edit p-1 hover:bg-gray-100 rounded" title="Modifica descrizione">
+                        <button class="action-edit p-1 hover:bg-gray-100 rounded" title="Modifica transazione">
                             <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                             </svg>
@@ -531,70 +534,373 @@ function attachActionHandlers() {
     });
 }
 
+// Global variable to store available categories
+let availableCategories = [];
+
 async function handleEditDescription(e) {
     e.stopPropagation();
     const row = e.target.closest('tr');
     const transactionId = row.dataset.transactionId;
-    const descriptionDiv = row.querySelector('.transaction-description');
+
+    // Prevent multiple edits on the same row
+    if (row.dataset.isEditing === 'true') {
+        return;
+    }
+    row.dataset.isEditing = 'true';
+
+    const cells = row.querySelectorAll('td');
+
+    // Get original values
+    const descriptionDiv = cells[2].querySelector('.transaction-description');
     const originalDescription = descriptionDiv.dataset.original;
 
-    // Create input field
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = originalDescription;
-    input.className = 'w-full px-2 py-1 border border-purple-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500';
+    const categorySpan = cells[3].querySelector('span');
+    const originalCategory = categorySpan.textContent.trim();
 
-    // Replace description with input
-    const originalHTML = descriptionDiv.innerHTML;
-    descriptionDiv.innerHTML = '';
-    descriptionDiv.appendChild(input);
-    input.focus();
-    input.select();
+    const amountInCell = cells[4];
+    const amountOutCell = cells[5];
+    const originalAmountInText = amountInCell.textContent.trim();
+    const originalAmountOutText = amountOutCell.textContent.trim();
+
+    // Parse amounts (from "€ 1.234,56" to "1234.56" for storage, "1234,56" for input)
+    const parseAmount = (text) => {
+        if (!text || text === '-' || text === '—') return null;
+        return text.replace('€', '').trim().replace(/\./g, '').replace(',', '.');
+    };
+
+    const formatAmountForInput = (text) => {
+        if (!text || text === '-' || text === '—') return '';
+        const cleaned = text.replace('€', '').trim().replace(/\./g, '');
+        return cleaned;
+    };
+
+    const originalAmountIn = parseAmount(originalAmountInText);
+    const originalAmountOut = parseAmount(originalAmountOutText);
+
+    const amountInForInput = formatAmountForInput(originalAmountInText);
+    const amountOutForInput = formatAmountForInput(originalAmountOutText);
+
+    // Store original HTML for all cells
+    const originalDescriptionHTML = descriptionDiv.innerHTML;
+    const originalCategoryHTML = cells[3].innerHTML;
+    const originalAmountInHTML = amountInCell.innerHTML;
+    const originalAmountOutHTML = amountOutCell.innerHTML;
+    const actionsCell = cells[6];
+    const originalActionsHTML = actionsCell.innerHTML;
+
+    // Build category options
+    const categoryOptions = availableCategories.map(cat =>
+        `<option value="${cat}" ${cat === originalCategory ? 'selected' : ''}>${cat}</option>`
+    ).join('');
+
+    // Replace description cell with input
+    descriptionDiv.innerHTML = `<input type="text" class="edit-input" id="edit-desc-${transactionId}" value="${escapeHtml(originalDescription)}" placeholder="Descrizione">`;
+
+    // Replace category cell with select
+    cells[3].innerHTML = `<select class="edit-category-select" id="edit-cat-${transactionId}">${categoryOptions}</select>`;
+
+    // Replace amount cells with inputs
+    amountInCell.innerHTML = `<input type="text" class="edit-input" id="edit-in-${transactionId}" value="${amountInForInput}" placeholder="0,00" data-type="amount">`;
+    amountOutCell.innerHTML = `<input type="text" class="edit-input" id="edit-out-${transactionId}" value="${amountOutForInput}" placeholder="0,00" data-type="amount">`;
+
+    // Replace actions cell with save/cancel buttons
+    actionsCell.innerHTML = `
+        <div class="edit-actions-buttons flex items-center justify-center gap-1">
+            <button class="edit-save-btn p-1 hover:bg-green-100 rounded" title="Salva modifiche (Enter)">
+                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </button>
+            <button class="edit-cancel-btn p-1 hover:bg-red-100 rounded" title="Annulla (Esc)">
+                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+
+    // Focus on description
+    const descInput = document.getElementById(`edit-desc-${transactionId}`);
+    descInput.focus();
+    descInput.select();
+
+    // Add validation and formatting to amount inputs
+    const amountInInput = document.getElementById(`edit-in-${transactionId}`);
+    const amountOutInput = document.getElementById(`edit-out-${transactionId}`);
+
+    [amountInInput, amountOutInput].forEach(input => {
+        input.addEventListener('blur', (e) => {
+            validateAndFormatAmount(e.target);
+        });
+    });
 
     // Handle save
     const saveEdit = async () => {
-        const newDescription = input.value.trim();
+        const newDescription = descInput.value.trim();
+        const newCategory = document.getElementById(`edit-cat-${transactionId}`).value;
+        const newAmountInText = amountInInput.value.trim();
+        const newAmountOutText = amountOutInput.value.trim();
 
-        if (newDescription && newDescription !== originalDescription) {
-            try {
-                const response = await fetch(`/api/transactions/${transactionId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ description: newDescription })
-                });
+        // Validate amounts
+        const amountInValid = !newAmountInText || validateItalianAmount(newAmountInText);
+        const amountOutValid = !newAmountOutText || validateItalianAmount(newAmountOutText);
 
-                const result = await response.json();
+        if (!amountInValid) {
+            amountInInput.classList.add('error');
+            alert('Formato entrate non valido. Usa formato italiano: es. 1234,56');
+            return;
+        }
 
-                if (result.success) {
-                    descriptionDiv.dataset.original = newDescription;
-                    descriptionDiv.setAttribute('title', newDescription);
-                    descriptionDiv.textContent = newDescription;
-                } else {
-                    alert('Errore nell\'aggiornamento della descrizione');
-                    descriptionDiv.innerHTML = originalHTML;
-                }
-            } catch (error) {
-                console.error('Error updating description:', error);
-                alert('Errore nell\'aggiornamento della descrizione');
-                descriptionDiv.innerHTML = originalHTML;
+        if (!amountOutValid) {
+            amountOutInput.classList.add('error');
+            alert('Formato uscite non valido. Usa formato italiano: es. 1234,56');
+            return;
+        }
+
+        // Convert amounts to database format (decimal)
+        const newAmountIn = newAmountInText ? parseFloat(newAmountInText.replace(/\./g, '').replace(',', '.')) : null;
+        const newAmountOut = newAmountOutText ? parseFloat(newAmountOutText.replace(/\./g, '').replace(',', '.')) : null;
+
+        // Check if anything changed
+        const descChanged = newDescription !== originalDescription;
+        const catChanged = newCategory !== originalCategory;
+        const amountInChanged = newAmountIn !== (originalAmountIn ? parseFloat(originalAmountIn) : null);
+        const amountOutChanged = newAmountOut !== (originalAmountOut ? parseFloat(originalAmountOut) : null);
+
+        if (!descChanged && !catChanged && !amountInChanged && !amountOutChanged) {
+            // Nothing changed, just restore
+            restoreOriginal();
+            return;
+        }
+
+        // Build update object
+        const updates = {};
+        if (descChanged) updates.description = newDescription;
+        if (catChanged) updates.category = newCategory;
+        if (amountInChanged) updates.amount_in = newAmountIn;
+        if (amountOutChanged) updates.amount_out = newAmountOut;
+
+        // Show loading state on save button
+        const saveBtn = actionsCell.querySelector('.edit-save-btn');
+        const originalSaveBtnHTML = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = `
+            <svg class="w-4 h-4 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        `;
+
+        try {
+            const response = await fetch(`/api/transactions/${transactionId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Show success state briefly
+                saveBtn.innerHTML = `
+                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                `;
+
+                // Update only this row with fresh data instead of reloading entire table
+                setTimeout(async () => {
+                    await updateSingleRow(transactionId, row);
+                }, 300);
+            } else {
+                alert('Errore nell\'aggiornamento della transazione');
+                saveBtn.innerHTML = originalSaveBtnHTML;
+                saveBtn.disabled = false;
+                row.dataset.isEditing = 'false';
             }
-        } else {
-            descriptionDiv.innerHTML = originalHTML;
+        } catch (error) {
+            console.error('Error updating transaction:', error);
+            alert('Errore nell\'aggiornamento della transazione');
+            saveBtn.innerHTML = originalSaveBtnHTML;
+            saveBtn.disabled = false;
+            row.dataset.isEditing = 'false';
         }
     };
 
-    // Save on Enter
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            saveEdit();
-        } else if (e.key === 'Escape') {
-            descriptionDiv.innerHTML = originalHTML;
-        }
+    const restoreOriginal = () => {
+        descriptionDiv.innerHTML = originalDescriptionHTML;
+        cells[3].innerHTML = originalCategoryHTML;
+        amountInCell.innerHTML = originalAmountInHTML;
+        amountOutCell.innerHTML = originalAmountOutHTML;
+        actionsCell.innerHTML = originalActionsHTML;
+
+        // Reset editing flag
+        row.dataset.isEditing = 'false';
+
+        // CRITICAL: Reattach event handlers after restoring HTML
+        const editBtn = actionsCell.querySelector('.action-edit');
+        const toggleBtn = actionsCell.querySelector('.action-toggle');
+        const deleteBtn = actionsCell.querySelector('.action-delete');
+
+        if (editBtn) editBtn.addEventListener('click', handleEditDescription);
+        if (toggleBtn) toggleBtn.addEventListener('click', handleToggleStatus);
+        if (deleteBtn) deleteBtn.addEventListener('click', handleDeleteTransaction);
+    };
+
+    // Get save and cancel buttons
+    const saveBtn = actionsCell.querySelector('.edit-save-btn');
+    const cancelBtn = actionsCell.querySelector('.edit-cancel-btn');
+
+    // Save button click
+    saveBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        saveEdit();
     });
 
-    // Save on blur
-    input.addEventListener('blur', saveEdit);
+    // Cancel button click
+    cancelBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        restoreOriginal();
+    });
+
+    // Save on Enter in any field
+    [descInput, document.getElementById(`edit-cat-${transactionId}`), amountInInput, amountOutInput].forEach(input => {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveEdit();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                restoreOriginal();
+            }
+        });
+    });
+}
+
+// Update a single row with fresh data from the server
+async function updateSingleRow(transactionId, row) {
+    try {
+        const response = await fetch(`/api/transactions/${transactionId}`);
+        const result = await response.json();
+
+        if (result.success && result.data) {
+            const tx = result.data;
+
+            // Format data same as in displayTransactions
+            const date = new Date(tx.transaction_date).toLocaleDateString('it-IT', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+
+            const formattedAmountIn = tx.amount_in ? new Intl.NumberFormat('it-IT', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(tx.amount_in) : null;
+
+            const formattedAmountOut = tx.amount_out ? new Intl.NumberFormat('it-IT', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(tx.amount_out) : null;
+
+            const isExcluded = tx.status === 'excluded';
+            const rowClass = isExcluded ? 'transaction-row-excluded' : 'hover:bg-gray-50';
+            const statusIcon = isExcluded
+                ? '<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
+                : '<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+
+            // Build new row HTML
+            const newRowHTML = `
+                <td class="px-3 py-3 text-xs text-gray-900 font-mono">${date}</td>
+                <td class="px-3 py-3 text-sm text-center">
+                    <span class="badge badge-${tx.bank}">${tx.bank}</span>
+                </td>
+                <td class="px-3 py-3 text-xs text-gray-900 font-mono">
+                    <div class="transaction-description" data-original="${escapeHtml(tx.description)}" title="${escapeHtml(tx.description)}">
+                        ${escapeHtml(tx.description)}
+                    </div>
+                    ${tx.merchant ? `<div class="text-xs text-gray-500">${escapeHtml(tx.merchant)}</div>` : ''}
+                </td>
+                <td class="px-3 py-3 text-sm text-center">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 font-mono">
+                        ${tx.category || 'uncategorized'}
+                    </span>
+                </td>
+                <td class="px-2 py-3 text-sm text-center font-semibold">
+                    ${formattedAmountIn ? `<span class="amount-in">€ ${formattedAmountIn}</span>` : '<span class="amount-zero">-</span>'}
+                </td>
+                <td class="px-2 py-3 text-sm text-center font-semibold">
+                    ${formattedAmountOut ? `<span class="amount-out">€ ${formattedAmountOut}</span>` : '<span class="amount-zero">—</span>'}
+                </td>
+                <td class="px-2 py-3 text-center">
+                    <div class="row-actions opacity-0 transition-opacity flex items-center justify-center gap-0.5">
+                        <button class="action-edit p-1 hover:bg-gray-100 rounded" title="Modifica transazione">
+                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </button>
+                        <button class="action-toggle p-1 hover:bg-gray-100 rounded" title="${isExcluded ? 'Attiva' : 'Escludi'}">
+                            ${statusIcon}
+                        </button>
+                        <button class="action-delete p-1 hover:bg-gray-100 rounded" title="Elimina">
+                            <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </td>
+            `;
+
+            // Update row class and content
+            row.className = `transaction-row ${rowClass}`;
+            row.dataset.status = tx.status;
+            row.dataset.isEditing = 'false';
+            row.innerHTML = newRowHTML;
+
+            // Reattach event handlers to this row
+            const editBtn = row.querySelector('.action-edit');
+            const toggleBtn = row.querySelector('.action-toggle');
+            const deleteBtn = row.querySelector('.action-delete');
+
+            if (editBtn) editBtn.addEventListener('click', handleEditDescription);
+            if (toggleBtn) toggleBtn.addEventListener('click', handleToggleStatus);
+            if (deleteBtn) deleteBtn.addEventListener('click', handleDeleteTransaction);
+
+            // Update summary bar
+            updateSummaryBar();
+        } else {
+            console.error('Failed to fetch updated transaction data');
+            // Fallback: reload entire table
+            loadTransactions(true);
+        }
+    } catch (error) {
+        console.error('Error updating single row:', error);
+        // Fallback: reload entire table
+        loadTransactions(true);
+    }
+}
+
+// Validate Italian decimal format (allows: 1234,56 or 1.234,56)
+function validateItalianAmount(value) {
+    if (!value) return true;
+    // Pattern: optional digits with optional thousand separators (.), comma, exactly 2 decimals
+    const pattern = /^(\d{1,3}(\.\d{3})*|\d+)(,\d{2})?$/;
+    return pattern.test(value);
+}
+
+// Format and validate amount input on blur
+function validateAndFormatAmount(input) {
+    const value = input.value.trim();
+    if (!value) {
+        input.classList.remove('error');
+        return;
+    }
+
+    if (validateItalianAmount(value)) {
+        input.classList.remove('error');
+    } else {
+        input.classList.add('error');
+    }
 }
 
 async function handleToggleStatus(e) {
