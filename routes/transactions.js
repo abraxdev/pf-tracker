@@ -2,6 +2,53 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../config/supabase');
 
+// Get distinct filter values (banks, types, categories)
+// IMPORTANT: This must be before the '/:id' route to avoid conflicts
+router.get('/filters/values', async (req, res) => {
+    try {
+        // Get distinct banks
+        const { data: banksData, error: banksError } = await supabase
+            .from('transactions')
+            .select('bank')
+            .not('bank', 'is', null);
+
+        if (banksError) throw banksError;
+
+        // Get distinct types
+        const { data: typesData, error: typesError } = await supabase
+            .from('transactions')
+            .select('type')
+            .not('type', 'is', null);
+
+        if (typesError) throw typesError;
+
+        // Get distinct categories
+        const { data: categoriesData, error: categoriesError } = await supabase
+            .from('transactions')
+            .select('category')
+            .not('category', 'is', null);
+
+        if (categoriesError) throw categoriesError;
+
+        // Extract unique values and sort
+        const banks = [...new Set(banksData.map(t => t.bank))].filter(Boolean).sort();
+        const types = [...new Set(typesData.map(t => t.type))].filter(Boolean).sort();
+        const categories = [...new Set(categoriesData.map(t => t.category))].filter(Boolean).sort();
+
+        res.json({
+            success: true,
+            data: {
+                banks,
+                types,
+                categories
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching filter values:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Get transactions with filters
 router.get('/', async (req, res) => {
     try {

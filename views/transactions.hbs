@@ -22,39 +22,70 @@
 
         <!-- Quick Filters -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 text-sm">
+            <!-- Bank Multi-Select -->
             <div>
                 <label class="label-fintech">Banca</label>
-                <select id="filter-bank" class="input-fintech">
-                    <option value="">Tutte le banche</option>
-                    <option value="widiba">Widiba</option>
-                    <option value="relaxbanking">RelaxBanking</option>
-                    <option value="traderepublic">TradeRepublic</option>
-                </select>
+                <div class="multi-select-wrapper">
+                    <div id="selected-banks" class="selected-chips"></div>
+                    <div class="multi-select-container">
+                        <button type="button" id="filter-bank-toggle" class="multi-select-toggle input-fintech text-left flex justify-between items-center">
+                            <span class="multi-select-placeholder">Tutte le banche</span>
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="filter-bank-dropdown" class="multi-select-dropdown hidden">
+                            <div class="multi-select-options" id="filter-bank-options">
+                                <div class="p-2 text-center text-gray-500 text-xs">Caricamento...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            <!-- Type Multi-Select -->
             <div>
                 <label class="label-fintech">Tipo Transazione</label>
-                <select id="filter-type" class="input-fintech">
-                    <option value="">Tutti i tipi</option>
-                    <option value="expense">Spesa</option>
-                    <option value="income">Entrata</option>
-                    <option value="transfer">Bonifico</option>
-                    <option value="card">Carta</option>
-                    <option value="investment">Investimento</option>
-                </select>
+                <div class="multi-select-wrapper">
+                    <div id="selected-types" class="selected-chips"></div>
+                    <div class="multi-select-container">
+                        <button type="button" id="filter-type-toggle" class="multi-select-toggle input-fintech text-left flex justify-between items-center">
+                            <span class="multi-select-placeholder">Tutti i tipi</span>
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="filter-type-dropdown" class="multi-select-dropdown hidden">
+                            <div class="multi-select-options" id="filter-type-options">
+                                <div class="p-2 text-center text-gray-500 text-xs">Caricamento...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            <!-- Category Multi-Select -->
             <div>
                 <label class="label-fintech">Categoria</label>
-                <select id="filter-category" class="input-fintech">
-                    <option value="">Tutte le categorie</option>
-                    <option value="groceries">Spesa</option>
-                    <option value="restaurants">Ristoranti</option>
-                    <option value="fuel">Carburante</option>
-                    <option value="utilities">Utenze</option>
-                    <option value="transport">Trasporti</option>
-                    <option value="subscriptions">Abbonamenti</option>
-                    <option value="investments">Investimenti</option>
-                </select>
+                <div class="multi-select-wrapper">
+                    <div id="selected-categories" class="selected-chips"></div>
+                    <div class="multi-select-container">
+                        <button type="button" id="filter-category-toggle" class="multi-select-toggle input-fintech text-left flex justify-between items-center">
+                            <span class="multi-select-placeholder">Tutte le categorie</span>
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="filter-category-dropdown" class="multi-select-dropdown hidden">
+                            <div class="multi-select-options" id="filter-category-options">
+                                <div class="p-2 text-center text-gray-500 text-xs">Caricamento...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            <!-- Search Input -->
             <div>
                 <label class="label-fintech">Cerca</label>
                 <input type="text" id="filter-search" placeholder="Cerca per descrizione..."

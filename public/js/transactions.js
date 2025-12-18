@@ -1,8 +1,6 @@
 // Transactions page filters and interactions
 
-const filterBank = document.getElementById('filter-bank');
-const filterType = document.getElementById('filter-type');
-const filterCategory = document.getElementById('filter-category');
+// Filter elements
 const filterSearch = document.getElementById('filter-search');
 const filterDateStart = document.getElementById('filter-date-start');
 const filterDateEnd = document.getElementById('filter-date-end');
@@ -15,12 +13,178 @@ const transactionsTbody = document.getElementById('transactions-tbody');
 const loadMoreBtn = document.getElementById('load-more-btn');
 const loadMoreContainer = document.getElementById('load-more-container');
 
+// Multi-select state
+const selectedFilters = {
+    banks: new Set(),
+    types: new Set(),
+    categories: new Set()
+};
+
+// Helper function to get the correct plural form and filter key
+function getFilterKey(filterName) {
+    const keyMap = {
+        'bank': 'banks',
+        'type': 'types',
+        'category': 'categories'
+    };
+    return keyMap[filterName] || `${filterName}s`;
+}
+
 // Pagination state
 let currentPage = 1;
 let totalPages = 1;
 let isLoading = false;
 let loadedTransactionIds = new Set(); // Track loaded transaction IDs to prevent duplicates
 let selectedMonth = null; // Track selected month filter
+
+// Initialize multi-select dropdowns
+async function initializeMultiSelects() {
+    try {
+        // Fetch filter values from API
+        const response = await fetch('/api/transactions/filters/values');
+        const result = await response.json();
+
+        if (result.success) {
+            const { banks, types, categories } = result.data;
+
+            // Initialize each multi-select
+            initMultiSelect('bank', banks, 'Banca');
+            initMultiSelect('type', types, 'Tipo');
+            initMultiSelect('category', categories, 'Categoria');
+        }
+    } catch (error) {
+        console.error('Error loading filter values:', error);
+    }
+}
+
+// Initialize a single multi-select component
+function initMultiSelect(filterName, values, label) {
+    const toggle = document.getElementById(`filter-${filterName}-toggle`);
+    const dropdown = document.getElementById(`filter-${filterName}-dropdown`);
+    const optionsContainer = document.getElementById(`filter-${filterName}-options`);
+    const filterKey = getFilterKey(filterName);
+    const chipsContainer = document.getElementById(`selected-${filterKey}`);
+
+    // Populate options
+    optionsContainer.innerHTML = values.map(value => `
+        <div class="multi-select-option" data-value="${value}">
+            <input type="checkbox" id="${filterName}-${value}" value="${value}">
+            <label for="${filterName}-${value}">${value}</label>
+        </div>
+    `).join('');
+
+    // Toggle dropdown
+    toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+
+        // Close other dropdowns
+        document.querySelectorAll('.multi-select-dropdown').forEach(dd => {
+            if (dd !== dropdown) {
+                dd.classList.add('hidden');
+            }
+        });
+
+        dropdown.classList.toggle('hidden');
+    });
+
+    // Handle option selection
+    optionsContainer.addEventListener('change', (e) => {
+        if (e.target.type !== 'checkbox') return;
+
+        const checkbox = e.target;
+        const option = checkbox.closest('.multi-select-option');
+        const value = option.dataset.value;
+
+        // Update selected filters
+        if (checkbox.checked) {
+            selectedFilters[filterKey].add(value);
+        } else {
+            selectedFilters[filterKey].delete(value);
+        }
+
+        // Update chips display
+        updateChips(filterName, chipsContainer);
+        updatePlaceholder(filterName, toggle);
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!toggle.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+}
+
+// Update chips display
+function updateChips(filterName, container) {
+    const filterKey = getFilterKey(filterName);
+    const selected = Array.from(selectedFilters[filterKey]);
+
+    if (selected.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = selected.map(value => `
+        <span class="chip">
+            ${value}
+            <button type="button" class="chip-remove" data-filter="${filterName}" data-value="${value}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </span>
+    `).join('');
+
+    // Handle chip removal
+    container.querySelectorAll('.chip-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const filterName = btn.dataset.filter;
+            const value = btn.dataset.value;
+            removeFilter(filterName, value);
+        });
+    });
+}
+
+// Update placeholder text
+function updatePlaceholder(filterName, toggle) {
+    const filterKey = getFilterKey(filterName);
+    const selected = Array.from(selectedFilters[filterKey]);
+    const placeholder = toggle.querySelector('.multi-select-placeholder');
+
+    const placeholders = {
+        bank: 'Tutte le banche',
+        type: 'Tutti i tipi',
+        category: 'Tutte le categorie'
+    };
+
+    if (selected.length === 0) {
+        placeholder.textContent = placeholders[filterName];
+        placeholder.style.color = '#6b7280';
+    } else {
+        placeholder.textContent = `${selected.length} selezionat${selected.length > 1 ? 'i' : 'o'}`;
+        placeholder.style.color = '#7e22ce';
+    }
+}
+
+// Remove a filter value
+function removeFilter(filterName, value) {
+    const filterKey = getFilterKey(filterName);
+    selectedFilters[filterKey].delete(value);
+
+    // Update checkbox state
+    const checkbox = document.getElementById(`${filterName}-${value}`);
+    if (checkbox) {
+        checkbox.checked = false;
+    }
+
+    // Update UI
+    const toggle = document.getElementById(`filter-${filterName}-toggle`);
+    const chipsContainer = document.getElementById(`selected-${filterKey}`);
+    updateChips(filterName, chipsContainer);
+    updatePlaceholder(filterName, toggle);
+}
 
 // Toggle advanced filters
 toggleAdvancedBtn.addEventListener('click', () => {
@@ -95,9 +259,28 @@ applyFiltersBtn.addEventListener('click', async () => {
 
 // Reset filters
 resetFiltersBtn.addEventListener('click', () => {
-    filterBank.value = '';
-    filterType.value = '';
-    filterCategory.value = '';
+    // Clear multi-select filters
+    selectedFilters.banks.clear();
+    selectedFilters.types.clear();
+    selectedFilters.categories.clear();
+
+    // Reset checkboxes
+    document.querySelectorAll('.multi-select-option input[type="checkbox"]').forEach(cb => {
+        cb.checked = false;
+    });
+
+    // Clear chips
+    document.getElementById('selected-banks').innerHTML = '';
+    document.getElementById('selected-types').innerHTML = '';
+    document.getElementById('selected-categories').innerHTML = '';
+
+    // Reset placeholders
+    ['bank', 'type', 'category'].forEach(filterName => {
+        const toggle = document.getElementById(`filter-${filterName}-toggle`);
+        if (toggle) updatePlaceholder(filterName, toggle);
+    });
+
+    // Clear other filters
     filterSearch.value = '';
     filterDateStart.value = '';
     filterDateEnd.value = '';
@@ -130,9 +313,17 @@ async function loadTransactions(replace = true) {
 
     const params = new URLSearchParams();
 
-    if (filterBank.value) params.append('bank', filterBank.value);
-    if (filterType.value) params.append('type', filterType.value);
-    if (filterCategory.value) params.append('category', filterCategory.value);
+    // Multi-select filters (comma-separated values)
+    if (selectedFilters.banks.size > 0) {
+        params.append('bank', Array.from(selectedFilters.banks).join(','));
+    }
+    if (selectedFilters.types.size > 0) {
+        params.append('type', Array.from(selectedFilters.types).join(','));
+    }
+    if (selectedFilters.categories.size > 0) {
+        params.append('category', Array.from(selectedFilters.categories).join(','));
+    }
+
     if (filterSearch.value) params.append('search', filterSearch.value);
 
     // Month filter (takes precedence over custom date range)
@@ -668,7 +859,9 @@ function exportToCSV() {
     let filename = `transazioni_${dateStr}`;
 
     // Add filter info to filename
-    if (filterBank.value) filename += `_${filterBank.value}`;
+    if (selectedFilters.banks.size > 0) {
+        filename += `_${Array.from(selectedFilters.banks).join('-')}`;
+    }
     if (selectedMonth) filename += `_${selectedMonth}`;
 
     filename += '.csv';
@@ -686,7 +879,8 @@ function exportToCSV() {
 }
 
 // Load transactions on page load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     generateMonthFilters(); // Generate month filter buttons
+    await initializeMultiSelects(); // Initialize multi-select dropdowns
     loadTransactions(true);
 });
