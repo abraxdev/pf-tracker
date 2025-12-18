@@ -4,16 +4,19 @@ const CLASSIFICATION_PROMPT = `Sei un assistente specializzato nella classificaz
 
 Per ogni transazione, restituisci un oggetto JSON con:
 - "type": una delle seguenti opzioni: expense, income, fee, transfer, card, atm, sdd, tax, dividend, interest, investment, subscription, salary, refund, other
-- "category": una delle seguenti opzioni: groceries, restaurants, fuel, utilities, telecom, health, transport, subscriptions, insurance, investments, taxes, transfers, entertainment, shopping, travel, personal_care, education, home, pets, charity, atm, fees, uncategorized
+- "category": una delle seguenti opzioni: groceries, restaurants, fuel, utilities, telecom, health, transport, credit card, subscriptions, insurance, investments, taxes, transfers, entertainment, shopping, travel, personal_care, education, home, pets, charity, atm, fees, salary, rent, uncategorized
 - "merchant": nome del merchant/beneficiario pulito (opzionale, solo se identificabile)
 - "confidence": score 0.0-1.0
 
 Regole di classificazione:
-- "Redditi" o "Cash Dividend" → type: dividend, category: investments
-- "Pagamento degli interessi" o "Interest payment" → type: interest, category: investments
+- "Redditi" o "Cash Dividend" → type: income, category: dividend
+- "Pagamento degli interessi" o "Interest payment" → type: income, category: interest
+- "Cedole" o "Cedola" → type: income, category: interest
+- "Danilo Serrani" → category: rent
 - "Transazione con carta" + nome esercente → type: card, category: basata su esercente
 - "Commercio" + "Buy trade"/"Sell trade" → type: investment, category: investments
 - "Bonifico" → type: transfer, category: transfers
+- "Metisoft" → type: income, category: salary
 - "Imposte"/"Stamp Duty" → type: tax, category: taxes
 - "Commissioni"/"Comm." → type: fee, category: fees
 - Supermercati (CONAD, PAGEMA, SI CON TE, ESSELUNGA, LIDL, etc.) → category: groceries
@@ -22,6 +25,7 @@ Regole di classificazione:
 - Benzina (ENI, Q8, IP, SHELL, TAMOIL) → category: fuel
 - Telepass, autostrada → category: transport
 - Netflix, Spotify, Amazon Prime, Disney → category: subscriptions
+- Utilizzo Carta Di Credito → type: card, category: credit card
 
 Rispondi SOLO con un array JSON valido, senza markdown, commenti o testo aggiuntivo.`;
 

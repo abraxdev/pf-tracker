@@ -124,7 +124,7 @@ async function classifyWithCache(transactions) {
         for (let i = 0; i < uncached.length; i += BATCH_SIZE) {
             const batch = uncached.slice(i, i + BATCH_SIZE);
             
-            if (useAntropic) {
+            if (useAntropic=="TRUE") {
                 try {
                 const classifications = await classifyTransactions(batch);
 

@@ -49,18 +49,38 @@ function parseUSAmount(amountStr) {
  * @returns {number|null} Float value
  */
 function parseAmount(amount) {
-    if (typeof amount === 'number') return amount;
+    // If already a number, return it directly
+    if (typeof amount === 'number') {
+        return amount;
+    }
+
     if (!amount) return null;
 
     const str = String(amount).trim();
 
-    // Check if it's Italian format (has comma as decimal separator)
-    if (str.includes(',')) {
-        return parseItalianAmount(str);
-    }
+    const hasComma = str.includes(',');
+    const hasDot = str.includes('.');
 
-    // Otherwise try US format
-    return parseUSAmount(str);
+    // Determine format based on which separators are present
+    if (hasComma && hasDot) {
+        // Both separators present: check which comes last
+        const lastCommaPos = str.lastIndexOf(',');
+        const lastDotPos = str.lastIndexOf('.');
+
+        if (lastCommaPos > lastDotPos) {
+            // Comma comes after dot: Italian format (1.234,56)
+            return parseItalianAmount(str);
+        } else {
+            // Dot comes after comma: US format (1,234.56)
+            return parseUSAmount(str);
+        }
+    } else if (hasComma && !hasDot) {
+        // Only comma: Italian decimal (234,56)
+        return parseItalianAmount(str);
+    } else {
+        // Only dot or no separator: US format (234.56 or 234)
+        return parseUSAmount(str);
+    }
 }
 
 /**
