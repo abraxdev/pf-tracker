@@ -71,7 +71,7 @@ router.get('/', async (req, res) => {
             .from('transactions')
             .select('*', { count: 'exact' });
 
-        // Apply filters
+        // Apply bank filter (AND logic - if banks selected, restrict to those banks)
         if (bank) {
             const banks = bank.split(',');
             query = query.in('bank', banks);
@@ -108,12 +108,18 @@ router.get('/', async (req, res) => {
             }
         }
 
-        if (category) {
+        // Apply type and category filters with OR logic
+        // If both type and category are specified, show transactions matching either
+        if (type && category) {
+            const types = type.split(',');
+            const categories = category.split(',');
+
+            // Build OR condition: (type IN types) OR (category IN categories)
+            query = query.or(`type.in.(${types.join(',')}),category.in.(${categories.join(',')})`);
+        } else if (category) {
             const categories = category.split(',');
             query = query.in('category', categories);
-        }
-
-        if (type) {
+        } else if (type) {
             const types = type.split(',');
             query = query.in('type', types);
         }

@@ -26,7 +26,6 @@
             <div>
                 <label class="label-fintech">Banca</label>
                 <div class="multi-select-wrapper">
-                    <div id="selected-banks" class="selected-chips"></div>
                     <div class="multi-select-container">
                         <button type="button" id="filter-bank-toggle" class="multi-select-toggle input-fintech text-left flex justify-between items-center">
                             <span class="multi-select-placeholder">Tutte le banche</span>
@@ -47,7 +46,6 @@
             <div>
                 <label class="label-fintech">Tipo Transazione</label>
                 <div class="multi-select-wrapper">
-                    <div id="selected-types" class="selected-chips"></div>
                     <div class="multi-select-container">
                         <button type="button" id="filter-type-toggle" class="multi-select-toggle input-fintech text-left flex justify-between items-center">
                             <span class="multi-select-placeholder">Tutti i tipi</span>
@@ -68,7 +66,6 @@
             <div>
                 <label class="label-fintech">Categoria</label>
                 <div class="multi-select-wrapper">
-                    <div id="selected-categories" class="selected-chips"></div>
                     <div class="multi-select-container">
                         <button type="button" id="filter-category-toggle" class="multi-select-toggle input-fintech text-left flex justify-between items-center">
                             <span class="multi-select-placeholder">Tutte le categorie</span>
@@ -115,6 +112,9 @@
                 </button>
             </div>
         </div>
+
+        <!-- Unified Chips Container -->
+        <div id="unified-chips-container" class="flex flex-wrap gap-1 rounded-lg items-center"></div>
 
         <!-- Advanced Date Range Filter (Initially Hidden) -->
         <div id="advanced-filters" class="hidden border-t border-slate-200 pt-4 mt-4">

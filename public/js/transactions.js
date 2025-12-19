@@ -66,7 +66,6 @@ function initMultiSelect(filterName, values, label) {
     const dropdown = document.getElementById(`filter-${filterName}-dropdown`);
     const optionsContainer = document.getElementById(`filter-${filterName}-options`);
     const filterKey = getFilterKey(filterName);
-    const chipsContainer = document.getElementById(`selected-${filterKey}`);
 
     // Populate options
     optionsContainer.innerHTML = values.map(value => `
@@ -106,7 +105,7 @@ function initMultiSelect(filterName, values, label) {
         }
 
         // Update chips display
-        updateChips(filterName, chipsContainer);
+        updateChips();
         updatePlaceholder(filterName, toggle);
     });
 
@@ -118,20 +117,61 @@ function initMultiSelect(filterName, values, label) {
     });
 }
 
-// Update chips display
-function updateChips(filterName, container) {
-    const filterKey = getFilterKey(filterName);
-    const selected = Array.from(selectedFilters[filterKey]);
+// Update chips display in unified container
+function updateChips() {
+    // Update unified chips container instead
+    updateUnifiedChipsContainer();
+}
 
-    if (selected.length === 0) {
-        container.innerHTML = '';
+// Update unified chips container with all selected filters
+function updateUnifiedChipsContainer() {
+    const unifiedContainer = document.getElementById('unified-chips-container');
+    if (!unifiedContainer) return;
+
+    let allChips = [];
+
+    // Add bank chips
+    const selectedBanks = Array.from(selectedFilters.banks);
+    selectedBanks.forEach(value => {
+        allChips.push({
+            filterType: 'bank',
+            filterName: 'bank',
+            value: value,
+            label: value
+        });
+    });
+
+    // Add type chips
+    const selectedTypes = Array.from(selectedFilters.types);
+    selectedTypes.forEach(value => {
+        allChips.push({
+            filterType: 'type',
+            filterName: 'type',
+            value: value,
+            label: value
+        });
+    });
+
+    // Add category chips
+    const selectedCategories = Array.from(selectedFilters.categories);
+    selectedCategories.forEach(value => {
+        allChips.push({
+            filterType: 'category',
+            filterName: 'category',
+            value: value,
+            label: value
+        });
+    });
+
+    if (allChips.length === 0) {
+        unifiedContainer.innerHTML = '<span class="text-sm text-gray-400 italic">Nessun filtro selezionato</span>';
         return;
     }
 
-    container.innerHTML = selected.map(value => `
-        <span class="chip">
-            ${value}
-            <button type="button" class="chip-remove" data-filter="${filterName}" data-value="${value}">
+    unifiedContainer.innerHTML = allChips.map(chip => `
+        <span class="chip" data-filter-type="${chip.filterType}" data-value="${chip.value}">
+            ${chip.label}
+            <button type="button" class="chip-remove" data-filter="${chip.filterName}" data-value="${chip.value}">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -140,7 +180,7 @@ function updateChips(filterName, container) {
     `).join('');
 
     // Handle chip removal
-    container.querySelectorAll('.chip-remove').forEach(btn => {
+    unifiedContainer.querySelectorAll('.chip-remove').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const filterName = btn.dataset.filter;
@@ -184,8 +224,7 @@ function removeFilter(filterName, value) {
 
     // Update UI
     const toggle = document.getElementById(`filter-${filterName}-toggle`);
-    const chipsContainer = document.getElementById(`selected-${filterKey}`);
-    updateChips(filterName, chipsContainer);
+    updateChips();
     updatePlaceholder(filterName, toggle);
 }
 
@@ -272,10 +311,8 @@ resetFiltersBtn.addEventListener('click', () => {
         cb.checked = false;
     });
 
-    // Clear chips
-    document.getElementById('selected-banks').innerHTML = '';
-    document.getElementById('selected-types').innerHTML = '';
-    document.getElementById('selected-categories').innerHTML = '';
+    // Clear unified chips container
+    updateChips();
 
     // Reset placeholders
     ['bank', 'type', 'category'].forEach(filterName => {
@@ -465,9 +502,13 @@ function displayTransactions(transactions, replace = true) {
                     ${tx.merchant ? `<div class="text-xs text-gray-500">${escapeHtml(tx.merchant)}</div>` : ''}
                 </td>
                 <td class="px-3 py-3 text-sm text-center">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 font-mono">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium is-category font-mono">
                         ${tx.category || 'uncategorized'}
                     </span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 font-mono">
+                        ${tx.type || 'uncategorized'}
+                    </span>
+
                 </td>
                 <td class="px-2 py-3 text-sm text-center font-semibold">
                     ${formattedAmountIn ? `<span class="amount-in">€ ${formattedAmountIn}</span>` : '<span class="amount-zero">-</span>'}
