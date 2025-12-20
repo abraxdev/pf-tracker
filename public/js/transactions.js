@@ -491,7 +491,7 @@ function displayTransactions(transactions, replace = true) {
             : '<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
 
         return `
-            <tr class="transaction-row ${rowClass}" data-transaction-id="${tx.id}" data-status="${tx.status}">
+            <tr class="transaction-row ${rowClass}" data-transaction-id="${tx.id}" data-status="${tx.status}" data-isin="${tx.isin || ''}">
                 <td class="px-3 py-3 text-xs text-gray-900 font-mono">${date}</td>
                 <td class="px-3 py-3 text-sm text-center">
                     <span class="badge badge-${tx.bank}">${tx.bank}</span>
@@ -915,6 +915,7 @@ async function updateSingleRow(transactionId, row) {
             // Update row class and content
             row.className = `transaction-row ${rowClass}`;
             row.dataset.status = tx.status;
+            row.dataset.isin = tx.isin || '';
             row.dataset.isEditing = 'false';
             row.innerHTML = newRowHTML;
 
@@ -1161,7 +1162,7 @@ function exportToCSV() {
     }
 
     // CSV header
-    const csvHeaders = ['Data', 'Banca', 'Descrizione', 'Merchant', 'Categoria', 'Entrate (€)', 'Uscite (€)'];
+    const csvHeaders = ['Data', 'Banca', 'Descrizione', 'Merchant', 'Categoria', 'Entrate (€)', 'Uscite (€)', 'ISIN'];
     const csvRows = [csvHeaders];
 
     // Extract data from each visible row
@@ -1199,6 +1200,9 @@ function exportToCSV() {
             ? formatAmountForCSV(usciteText)
             : '';
 
+        // Extract ISIN from data attribute
+        const isin = row.dataset.isin || '';
+
         // Create CSV row (escape quotes in text fields)
         const csvRow = [
             dateText,
@@ -1207,7 +1211,8 @@ function exportToCSV() {
             `"${merchant.replace(/"/g, '""')}"`,    // Escape quotes
             category,
             entrate,
-            uscite
+            uscite,
+            isin
         ];
 
         csvRows.push(csvRow);
@@ -1365,6 +1370,7 @@ function extractTransactionsData() {
 
         const status = row.dataset.status;
         const isActive = status === 'active';
+        const transactionId = row.dataset.transactionId;
 
         const cells = row.querySelectorAll('td');
 
@@ -1390,12 +1396,17 @@ function extractTransactionsData() {
             ? parseFloat(usciteText.replace('€', '').replace(/\./g, '').replace(',', '.').trim())
             : 0;
 
+        // Extract ISIN from data attribute (if available)
+        const isin = row.dataset.isin || null;
+
         const transaction = {
+            id: transactionId,
             date: dateText,
             bank,
             category,
             amountIn: entrate,
             amountOut: uscite,
+            isin,
             status,
             isActive
         };

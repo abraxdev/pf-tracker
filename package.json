@@ -7,7 +7,8 @@
     "start": "node app.js",
     "dev": "nodemon app.js",
     "tailwind:build": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css",
-    "tailwind:watch": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --watch"
+    "tailwind:watch": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --watch",
+    "extract-isin": "node ../scripts/extract-isin.js"
   },
   "keywords": [
     "finance",
