@@ -47,8 +47,9 @@ async function initializeMultiSelects() {
         if (result.success) {
             const { banks, types, categories } = result.data;
 
-            // Store categories globally for edit mode
+            // Store categories and types globally for edit mode
             availableCategories = categories;
+            availableTypes = types;
 
             // Initialize each multi-select
             initMultiSelect('bank', banks, 'Banca');
@@ -501,11 +502,11 @@ function displayTransactions(transactions, replace = true) {
                     </div>
                     ${tx.merchant ? `<div class="text-xs text-gray-500">${escapeHtml(tx.merchant)}</div>` : ''}
                 </td>
-                <td class="px-3 py-3 text-sm text-center">
+                <td class="px-3 py-2 text-sm text-center">
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium is-category font-mono">
                         ${tx.category || 'uncategorized'}
                     </span>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 font-mono">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium is-type bg-gray-100 text-gray-800 font-mono">
                         ${tx.type || 'uncategorized'}
                     </span>
 
@@ -575,8 +576,9 @@ function attachActionHandlers() {
     });
 }
 
-// Global variable to store available categories
+// Global variables to store available categories and types
 let availableCategories = [];
+let availableTypes = [];
 
 async function handleEditDescription(e) {
     e.stopPropagation();
@@ -595,8 +597,12 @@ async function handleEditDescription(e) {
     const descriptionDiv = cells[2].querySelector('.transaction-description');
     const originalDescription = descriptionDiv.dataset.original;
 
-    const categorySpan = cells[3].querySelector('span');
+    const categoryTypeCell = cells[3];
+    const categorySpan = categoryTypeCell.querySelector('.is-category');
     const originalCategory = categorySpan.textContent.trim();
+
+    const typeSpan = categoryTypeCell.querySelector('.is-type');
+    const originalType = typeSpan.textContent.trim();
 
     const amountInCell = cells[4];
     const amountOutCell = cells[5];
@@ -623,7 +629,7 @@ async function handleEditDescription(e) {
 
     // Store original HTML for all cells
     const originalDescriptionHTML = descriptionDiv.innerHTML;
-    const originalCategoryHTML = cells[3].innerHTML;
+    const originalCategoryHTML = categoryTypeCell.innerHTML;
     const originalAmountInHTML = amountInCell.innerHTML;
     const originalAmountOutHTML = amountOutCell.innerHTML;
     const actionsCell = cells[6];
@@ -634,11 +640,19 @@ async function handleEditDescription(e) {
         `<option value="${cat}" ${cat === originalCategory ? 'selected' : ''}>${cat}</option>`
     ).join('');
 
+    // Build type options
+    const typeOptions = availableTypes.map(type =>
+        `<option value="${type}" ${type === originalType ? 'selected' : ''}>${type}</option>`
+    ).join('');
+
     // Replace description cell with input
     descriptionDiv.innerHTML = `<input type="text" class="edit-input" id="edit-desc-${transactionId}" value="${escapeHtml(originalDescription)}" placeholder="Descrizione">`;
 
-    // Replace category cell with select
-    cells[3].innerHTML = `<select class="edit-category-select" id="edit-cat-${transactionId}">${categoryOptions}</select>`;
+    // Replace category/type cell with two selects
+    categoryTypeCell.innerHTML = `
+        <select class="edit-category-select" id="edit-cat-${transactionId}">${categoryOptions}</select>
+        <select class="edit-type-select" id="edit-type-${transactionId}">${typeOptions}</select>
+    `;
 
     // Replace amount cells with inputs
     amountInCell.innerHTML = `<input type="text" class="edit-input" id="edit-in-${transactionId}" value="${amountInForInput}" placeholder="0,00" data-type="amount">`;
@@ -679,6 +693,7 @@ async function handleEditDescription(e) {
     const saveEdit = async () => {
         const newDescription = descInput.value.trim();
         const newCategory = document.getElementById(`edit-cat-${transactionId}`).value;
+        const newType = document.getElementById(`edit-type-${transactionId}`).value;
         const newAmountInText = amountInInput.value.trim();
         const newAmountOutText = amountOutInput.value.trim();
 
@@ -705,10 +720,11 @@ async function handleEditDescription(e) {
         // Check if anything changed
         const descChanged = newDescription !== originalDescription;
         const catChanged = newCategory !== originalCategory;
+        const typeChanged = newType !== originalType;
         const amountInChanged = newAmountIn !== (originalAmountIn ? parseFloat(originalAmountIn) : null);
         const amountOutChanged = newAmountOut !== (originalAmountOut ? parseFloat(originalAmountOut) : null);
 
-        if (!descChanged && !catChanged && !amountInChanged && !amountOutChanged) {
+        if (!descChanged && !catChanged && !typeChanged && !amountInChanged && !amountOutChanged) {
             // Nothing changed, just restore
             restoreOriginal();
             return;
@@ -718,6 +734,7 @@ async function handleEditDescription(e) {
         const updates = {};
         if (descChanged) updates.description = newDescription;
         if (catChanged) updates.category = newCategory;
+        if (typeChanged) updates.type = newType;
         if (amountInChanged) updates.amount_in = newAmountIn;
         if (amountOutChanged) updates.amount_out = newAmountOut;
 
@@ -770,7 +787,7 @@ async function handleEditDescription(e) {
 
     const restoreOriginal = () => {
         descriptionDiv.innerHTML = originalDescriptionHTML;
-        cells[3].innerHTML = originalCategoryHTML;
+        categoryTypeCell.innerHTML = originalCategoryHTML;
         amountInCell.innerHTML = originalAmountInHTML;
         amountOutCell.innerHTML = originalAmountOutHTML;
         actionsCell.innerHTML = originalActionsHTML;
@@ -805,7 +822,7 @@ async function handleEditDescription(e) {
     });
 
     // Save on Enter in any field
-    [descInput, document.getElementById(`edit-cat-${transactionId}`), amountInInput, amountOutInput].forEach(input => {
+    [descInput, document.getElementById(`edit-cat-${transactionId}`), document.getElementById(`edit-type-${transactionId}`), amountInInput, amountOutInput].forEach(input => {
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -862,9 +879,12 @@ async function updateSingleRow(transactionId, row) {
                     </div>
                     ${tx.merchant ? `<div class="text-xs text-gray-500">${escapeHtml(tx.merchant)}</div>` : ''}
                 </td>
-                <td class="px-3 py-3 text-sm text-center">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 font-mono">
+                <td class="px-3 py-2 text-sm text-center">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium is-category font-mono">
                         ${tx.category || 'uncategorized'}
+                    </span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium is-type font-mono">
+                        ${tx.type || 'uncategorized'}
                     </span>
                 </td>
                 <td class="px-2 py-3 text-sm text-center font-semibold">
