@@ -1898,6 +1898,12 @@ function renderPassiveIncomeCharts(data) {
 
     // Render monthly progression as stacked bar chart
     renderPassiveMonthlyChart(passiveTransactions);
+
+    // Render passive income by ISIN chart
+    renderPassiveByISINChart(passiveTransactions);
+
+    // Render passive income by month chart
+    renderPassiveByMonthChart(passiveTransactions);
 }
 
 function renderPassiveMonthlyChart(passiveTransactions) {
@@ -2076,6 +2082,353 @@ function renderPassiveBreakdownChart(passiveTransactions) {
     destroyChart('chart-passive-breakdown');
     chartInstances['chart-passive-breakdown'] = new ApexCharts(document.querySelector('#chart-passive-breakdown'), options);
     chartInstances['chart-passive-breakdown'].render();
+}
+
+function renderPassiveByISINChart(passiveTransactions) {
+    // Filter transactions with ISIN
+    const transactionsWithISIN = passiveTransactions.filter(t => t.isin && t.isin.trim() !== '');
+
+    if (transactionsWithISIN.length === 0) {
+        document.querySelector('#chart-passive-by-isin').innerHTML = '<p class="text-center text-gray-500 py-8">Nessun dividendo con ISIN da visualizzare</p>';
+        return;
+    }
+
+    // Group by ISIN and month
+    const isinData = {};
+    const monthsSet = new Set();
+
+    transactionsWithISIN.forEach(t => {
+        const parts = t.date.split('/');
+        const monthYear = `${parts[1]}/${parts[2]}`;
+
+        if (!isinData[t.isin]) {
+            isinData[t.isin] = {
+                total: 0,
+                byMonth: {}
+            };
+        }
+
+        if (!isinData[t.isin].byMonth[monthYear]) {
+            isinData[t.isin].byMonth[monthYear] = 0;
+        }
+
+        isinData[t.isin].byMonth[monthYear] += t.amountIn;
+        isinData[t.isin].total += t.amountIn;
+        monthsSet.add(monthYear);
+    });
+
+    // Sort ISINs by total (highest to lowest)
+    const sortedISINs = Object.keys(isinData).sort((a, b) => isinData[b].total - isinData[a].total);
+
+    // Sort months chronologically
+    const sortedMonths = Array.from(monthsSet).sort((a, b) => {
+        const [monthA, yearA] = a.split('/');
+        const [monthB, yearB] = b.split('/');
+        return new Date(yearA, monthA - 1) - new Date(yearB, monthB - 1);
+    });
+
+    // Format month labels
+    const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+    const monthLabels = sortedMonths.map(m => {
+        const [month, year] = m.split('/');
+        return `${monthNames[parseInt(month) - 1]} ${year}`;
+    });
+
+    // Create series for each month (each month is a segment in the stacked bar)
+    const series = sortedMonths.map((month, index) => ({
+        name: monthLabels[index],
+        data: sortedISINs.map(isin => isinData[isin].byMonth[month] || 0)
+    }));
+
+    // Calculate totals for each ISIN for data labels
+    const totals = sortedISINs.map(isin => isinData[isin].total);
+
+    const options = {
+        series: series,
+        chart: {
+            type: 'bar',
+            height: Math.max(400, sortedISINs.length * 50), // Dynamic height based on number of ISINs
+            stacked: true,
+            toolbar: { show: true },
+            fontFamily: 'Inter, sans-serif'
+        },
+        colors: chartColors.categories.slice(0, sortedMonths.length),
+        plotOptions: {
+            bar: {
+                horizontal: true,
+                borderRadius: 4,
+                borderRadiusApplication: 'end',
+                dataLabels: {
+                    total: {
+                        enabled: true,
+                        style: {
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            fontFamily: 'JetBrains Mono, monospace',
+                            color: '#1f2937'
+                        },
+                        formatter: function(val, opts) {
+                            const isinIndex = opts.dataPointIndex;
+                            return formatCurrency(totals[isinIndex]);
+                        }
+                    }
+                }
+            }
+        },
+        dataLabels: {
+            enabled: false
+        },
+        xaxis: {
+            categories: sortedISINs,
+            labels: {
+                formatter: (val) => formatCurrency(val),
+                style: {
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: '11px'
+                }
+            },
+            title: {
+                text: 'Importo (€)',
+                style: {
+                    fontSize: '12px',
+                    fontWeight: 600
+                }
+            }
+        },
+        yaxis: {
+            labels: {
+                style: {
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    fontFamily: 'JetBrains Mono, monospace'
+                }
+            }
+        },
+        legend: {
+            position: 'top',
+            horizontalAlign: 'left',
+            fontSize: '11px',
+            fontWeight: 500,
+            markers: {
+                width: 10,
+                height: 10,
+                radius: 2
+            }
+        },
+        tooltip: {
+            custom: function({ series, seriesIndex, dataPointIndex, w }) {
+                const isin = w.globals.labels[dataPointIndex] || 'N/A';
+                const monthLabel = w.globals.seriesNames[seriesIndex] || 'N/A';
+                const value = series[seriesIndex][dataPointIndex];
+                const formattedValue = formatCurrency(value);
+                const total = totals[dataPointIndex];
+                const formattedTotal = formatCurrency(total);
+
+                return `
+                    <div style="
+                        background: #ffffff;
+                        color: #1f2937;
+                        padding: 10px 14px;
+                        border-radius: 6px;
+                        font-family: 'JetBrains Mono', monospace;
+                        font-size: 12px;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+                        min-width: 200px;
+                    ">
+                        <div style="font-weight: 700; margin-bottom: 6px; color: #7e22ce;">${isin}</div>
+                        <div style="color: #333333; margin-bottom: 4px;">${monthLabel}: ${formattedValue}</div>
+                        <div style="color: #666666; font-size: 11px; padding-top: 4px; border-top: 1px solid #e5e7eb;">
+                            Totale: ${formattedTotal}
+                        </div>
+                    </div>
+                `;
+            }
+        },
+        grid: {
+            borderColor: '#f1f5f9'
+        }
+    };
+
+    destroyChart('chart-passive-by-isin');
+    chartInstances['chart-passive-by-isin'] = new ApexCharts(document.querySelector('#chart-passive-by-isin'), options);
+    chartInstances['chart-passive-by-isin'].render();
+}
+
+function renderPassiveByMonthChart(passiveTransactions) {
+    // Filter transactions with ISIN
+    const transactionsWithISIN = passiveTransactions.filter(t => t.isin && t.isin.trim() !== '');
+
+    if (transactionsWithISIN.length === 0) {
+        document.querySelector('#chart-passive-by-month').innerHTML = '<p class="text-center text-gray-500 py-8">Nessun dividendo con ISIN da visualizzare</p>';
+        return;
+    }
+
+    // Group by month and ISIN
+    const monthData = {};
+    const isinsSet = new Set();
+
+    transactionsWithISIN.forEach(t => {
+        const parts = t.date.split('/');
+        const monthYear = `${parts[1]}/${parts[2]}`;
+
+        if (!monthData[monthYear]) {
+            monthData[monthYear] = {
+                total: 0,
+                byISIN: {}
+            };
+        }
+
+        if (!monthData[monthYear].byISIN[t.isin]) {
+            monthData[monthYear].byISIN[t.isin] = 0;
+        }
+
+        monthData[monthYear].byISIN[t.isin] += t.amountIn;
+        monthData[monthYear].total += t.amountIn;
+        isinsSet.add(t.isin);
+    });
+
+    // Sort months chronologically (oldest to newest)
+    const sortedMonths = Object.keys(monthData).sort((a, b) => {
+        const [monthA, yearA] = a.split('/');
+        const [monthB, yearB] = b.split('/');
+        return new Date(yearA, monthA - 1) - new Date(yearB, monthB - 1);
+    });
+
+    // Format month labels
+    const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+    const monthLabels = sortedMonths.map(m => {
+        const [month, year] = m.split('/');
+        return `${monthNames[parseInt(month) - 1]} ${year}`;
+    });
+
+    // Sort ISINs by total amount across all months (for consistent color assignment)
+    const isinTotals = {};
+    Array.from(isinsSet).forEach(isin => {
+        isinTotals[isin] = 0;
+        sortedMonths.forEach(month => {
+            isinTotals[isin] += monthData[month].byISIN[isin] || 0;
+        });
+    });
+    const sortedISINs = Array.from(isinsSet).sort((a, b) => isinTotals[b] - isinTotals[a]);
+
+    // Create series for each ISIN (each ISIN is a segment in the stacked bar)
+    const series = sortedISINs.map((isin, index) => ({
+        name: isin,
+        data: sortedMonths.map(month => monthData[month].byISIN[isin] || 0)
+    }));
+
+    // Calculate totals for each month for data labels
+    const totals = sortedMonths.map(month => monthData[month].total);
+
+    const options = {
+        series: series,
+        chart: {
+            type: 'bar',
+            height: Math.max(400, sortedMonths.length * 50), // Dynamic height based on number of months
+            stacked: true,
+            toolbar: { show: true },
+            fontFamily: 'Inter, sans-serif'
+        },
+        colors: chartColors.categories.slice(0, sortedISINs.length),
+        plotOptions: {
+            bar: {
+                horizontal: true,
+                borderRadius: 4,
+                borderRadiusApplication: 'end',
+                dataLabels: {
+                    total: {
+                        enabled: true,
+                        style: {
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            fontFamily: 'JetBrains Mono, monospace',
+                            color: '#1f2937'
+                        },
+                        formatter: function(val, opts) {
+                            const monthIndex = opts.dataPointIndex;
+                            return formatCurrency(totals[monthIndex]);
+                        }
+                    }
+                }
+            }
+        },
+        dataLabels: {
+            enabled: false
+        },
+        xaxis: {
+            categories: monthLabels,
+            labels: {
+                formatter: (val) => formatCurrency(val),
+                style: {
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: '11px'
+                }
+            },
+            title: {
+                text: 'Importo (€)',
+                style: {
+                    fontSize: '12px',
+                    fontWeight: 600
+                }
+            }
+        },
+        yaxis: {
+            labels: {
+                style: {
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    fontFamily: 'JetBrains Mono, monospace'
+                }
+            }
+        },
+        legend: {
+            position: 'top',
+            horizontalAlign: 'left',
+            fontSize: '11px',
+            fontWeight: 500,
+            markers: {
+                width: 10,
+                height: 10,
+                radius: 2
+            }
+        },
+        tooltip: {
+            custom: function({ series, seriesIndex, dataPointIndex, w }) {
+                const monthLabel = w.globals.labels[dataPointIndex] || 'N/A';
+                const isin = w.globals.seriesNames[seriesIndex] || 'N/A';
+                const value = series[seriesIndex][dataPointIndex];
+                const formattedValue = formatCurrency(value);
+                const total = totals[dataPointIndex];
+                const formattedTotal = formatCurrency(total);
+
+                return `
+                    <div style="
+                        background: #ffffff;
+                        color: #1f2937;
+                        padding: 10px 14px;
+                        border-radius: 6px;
+                        font-family: 'JetBrains Mono', monospace;
+                        font-size: 12px;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+                        min-width: 200px;
+                    ">
+                        <div style="font-weight: 700; margin-bottom: 6px; color: #7e22ce;">${monthLabel}</div>
+                        <div style="color: #333333; margin-bottom: 4px;">${isin}: ${formattedValue}</div>
+                        <div style="color: #666666; font-size: 11px; padding-top: 4px; border-top: 1px solid #e5e7eb;">
+                            Totale mese: ${formattedTotal}
+                        </div>
+                    </div>
+                `;
+            }
+        },
+        grid: {
+            borderColor: '#f1f5f9'
+        }
+    };
+
+    destroyChart('chart-passive-by-month');
+    chartInstances['chart-passive-by-month'] = new ApexCharts(document.querySelector('#chart-passive-by-month'), options);
+    chartInstances['chart-passive-by-month'].render();
 }
 
 function renderMonthlyTrendsChart(data) {
