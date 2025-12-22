@@ -146,9 +146,39 @@ router.get('/', async (req, res) => {
 
         if (error) throw error;
 
+        // Enrich transactions with ETF names where ISIN is present
+        const isins = [...new Set(data.filter(tx => tx.isin).map(tx => tx.isin))];
+        let etfMap = {};
+
+        if (isins.length > 0) {
+            console.log('ISINs found:', isins);
+            const { data: etfData, error: etfError } = await supabase
+                .from('etf')
+                .select('isin, nome')
+                .in('isin', isins);
+
+            console.log('ETF query result:', { etfData, etfError });
+
+            if (!etfError && etfData) {
+                etfMap = etfData.reduce((acc, etf) => {
+                    acc[etf.isin] = etf;
+                    return acc;
+                }, {});
+                console.log('ETF map:', etfMap);
+            }
+        } else {
+            console.log('No ISINs found in transactions');
+        }
+
+        // Add ETF data to transactions
+        const enrichedData = data.map(tx => ({
+            ...tx,
+            etf: tx.isin && etfMap[tx.isin] ? etfMap[tx.isin] : null
+        }));
+
         res.json({
             success: true,
-            data,
+            data: enrichedData,
             pagination: {
                 page: pageNum,
                 limit: limitNum,
@@ -172,6 +202,19 @@ router.get('/:id', async (req, res) => {
             .single();
 
         if (error) throw error;
+
+        // Enrich with ETF name if ISIN is present
+        if (data.isin) {
+            const { data: etfData, error: etfError } = await supabase
+                .from('etf')
+                .select('isin, nome')
+                .eq('isin', data.isin)
+                .single();
+
+            if (!etfError && etfData) {
+                data.etf = etfData;
+            }
+        }
 
         res.json({ success: true, data });
     } catch (error) {

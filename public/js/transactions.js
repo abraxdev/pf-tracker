@@ -501,6 +501,7 @@ function displayTransactions(transactions, replace = true) {
                         ${escapeHtml(tx.description)}
                     </div>
                     ${tx.merchant ? `<div class="text-xs text-gray-500">${escapeHtml(tx.merchant)}</div>` : ''}
+                    ${tx.etf?.nome ? `<div class="text-xs text-blue-600 font-medium">${escapeHtml(tx.etf.nome)}</div>` : ''}
                 </td>
                 <td class="px-3 py-2 text-sm text-center">
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium is-category font-mono">
@@ -878,6 +879,7 @@ async function updateSingleRow(transactionId, row) {
                         ${escapeHtml(tx.description)}
                     </div>
                     ${tx.merchant ? `<div class="text-xs text-gray-500">${escapeHtml(tx.merchant)}</div>` : ''}
+                    ${tx.etf?.nome ? `<div class="text-xs text-blue-600 font-medium">${escapeHtml(tx.etf.nome)}</div>` : ''}
                 </td>
                 <td class="px-3 py-2 text-sm text-center">
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium is-category font-mono">
@@ -1399,6 +1401,13 @@ function extractTransactionsData() {
         // Extract ISIN from data attribute (if available)
         const isin = row.dataset.isin || null;
 
+        // Extract ETF name from the description cell (if available)
+        let etfName = null;
+        const etfNameDiv = cells[2]?.querySelector('.text-blue-600');
+        if (etfNameDiv) {
+            etfName = etfNameDiv.textContent.trim();
+        }
+
         const transaction = {
             id: transactionId,
             date: dateText,
@@ -1407,6 +1416,7 @@ function extractTransactionsData() {
             amountIn: entrate,
             amountOut: uscite,
             isin,
+            etf: etfName ? { nome: etfName } : null,
             status,
             isActive
         };
@@ -2096,10 +2106,16 @@ function renderPassiveByISINChart(passiveTransactions) {
     // Group by ISIN and month
     const isinData = {};
     const monthsSet = new Set();
+    const isinToName = {}; // Map ISIN to ETF name
 
     transactionsWithISIN.forEach(t => {
         const parts = t.date.split('/');
         const monthYear = `${parts[1]}/${parts[2]}`;
+
+        // Store ETF name for this ISIN
+        if (t.etf && t.etf.nome) {
+            isinToName[t.isin] = t.etf.nome;
+        }
 
         if (!isinData[t.isin]) {
             isinData[t.isin] = {
@@ -2119,6 +2135,13 @@ function renderPassiveByISINChart(passiveTransactions) {
 
     // Sort ISINs by total (highest to lowest)
     const sortedISINs = Object.keys(isinData).sort((a, b) => isinData[b].total - isinData[a].total);
+
+    console.log('ISIN to Name mapping:', isinToName);
+    console.log('Sample transaction with ISIN:', transactionsWithISIN[0]);
+
+    // Create display labels (ETF name or ISIN as fallback)
+    const displayLabels = sortedISINs.map(isin => isinToName[isin] || isin);
+    console.log('Display labels:', displayLabels);
 
     // Sort months chronologically
     const sortedMonths = Array.from(monthsSet).sort((a, b) => {
@@ -2179,7 +2202,7 @@ function renderPassiveByISINChart(passiveTransactions) {
             enabled: false
         },
         xaxis: {
-            categories: sortedISINs,
+            categories: displayLabels,
             labels: {
                 formatter: (val) => formatCurrency(val),
                 style: {
@@ -2217,7 +2240,8 @@ function renderPassiveByISINChart(passiveTransactions) {
         },
         tooltip: {
             custom: function({ series, seriesIndex, dataPointIndex, w }) {
-                const isin = w.globals.labels[dataPointIndex] || 'N/A';
+                const etfName = w.globals.labels[dataPointIndex] || 'N/A';
+                const isin = sortedISINs[dataPointIndex] || '';
                 const monthLabel = w.globals.seriesNames[seriesIndex] || 'N/A';
                 const value = series[seriesIndex][dataPointIndex];
                 const formattedValue = formatCurrency(value);
@@ -2235,7 +2259,8 @@ function renderPassiveByISINChart(passiveTransactions) {
                         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
                         min-width: 200px;
                     ">
-                        <div style="font-weight: 700; margin-bottom: 6px; color: #7e22ce;">${isin}</div>
+                        <div style="font-weight: 700; margin-bottom: 6px; color: #7e22ce;">${etfName}</div>
+                        ${isin && etfName !== isin ? `<div style="color: #999999; font-size: 10px; margin-bottom: 4px;">${isin}</div>` : ''}
                         <div style="color: #333333; margin-bottom: 4px;">${monthLabel}: ${formattedValue}</div>
                         <div style="color: #666666; font-size: 11px; padding-top: 4px; border-top: 1px solid #e5e7eb;">
                             Totale: ${formattedTotal}
@@ -2266,10 +2291,16 @@ function renderPassiveByMonthChart(passiveTransactions) {
     // Group by month and ISIN
     const monthData = {};
     const isinsSet = new Set();
+    const isinToName = {}; // Map ISIN to ETF name
 
     transactionsWithISIN.forEach(t => {
         const parts = t.date.split('/');
         const monthYear = `${parts[1]}/${parts[2]}`;
+
+        // Store ETF name for this ISIN
+        if (t.etf && t.etf.nome) {
+            isinToName[t.isin] = t.etf.nome;
+        }
 
         if (!monthData[monthYear]) {
             monthData[monthYear] = {
@@ -2324,7 +2355,7 @@ function renderPassiveByMonthChart(passiveTransactions) {
         series: series,
         chart: {
             type: 'bar',
-            height: Math.max(400, sortedMonths.length * 50), // Dynamic height based on number of months
+            height: 450,
             stacked: true,
             toolbar: { show: true },
             fontFamily: 'Inter, sans-serif'
@@ -2332,14 +2363,14 @@ function renderPassiveByMonthChart(passiveTransactions) {
         colors: chartColors.categories.slice(0, sortedISINs.length),
         plotOptions: {
             bar: {
-                horizontal: true,
+                horizontal: false,
                 borderRadius: 4,
                 borderRadiusApplication: 'end',
                 dataLabels: {
                     total: {
                         enabled: true,
                         style: {
-                            fontSize: '12px',
+                            fontSize: '11px',
                             fontWeight: 700,
                             fontFamily: 'JetBrains Mono, monospace',
                             color: '#1f2937'
@@ -2358,10 +2389,19 @@ function renderPassiveByMonthChart(passiveTransactions) {
         xaxis: {
             categories: monthLabels,
             labels: {
-                formatter: (val) => formatCurrency(val),
                 style: {
                     fontFamily: 'JetBrains Mono, monospace',
                     fontSize: '11px'
+                }
+            }
+        },
+        yaxis: {
+            labels: {
+                formatter: (val) => formatCurrency(val),
+                style: {
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    fontFamily: 'JetBrains Mono, monospace'
                 }
             },
             title: {
@@ -2372,30 +2412,14 @@ function renderPassiveByMonthChart(passiveTransactions) {
                 }
             }
         },
-        yaxis: {
-            labels: {
-                style: {
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    fontFamily: 'JetBrains Mono, monospace'
-                }
-            }
-        },
         legend: {
-            position: 'top',
-            horizontalAlign: 'left',
-            fontSize: '11px',
-            fontWeight: 500,
-            markers: {
-                width: 10,
-                height: 10,
-                radius: 2
-            }
+            show: false
         },
         tooltip: {
             custom: function({ series, seriesIndex, dataPointIndex, w }) {
                 const monthLabel = w.globals.labels[dataPointIndex] || 'N/A';
                 const isin = w.globals.seriesNames[seriesIndex] || 'N/A';
+                const etfName = isinToName[isin] || isin;
                 const value = series[seriesIndex][dataPointIndex];
                 const formattedValue = formatCurrency(value);
                 const total = totals[dataPointIndex];
@@ -2413,7 +2437,9 @@ function renderPassiveByMonthChart(passiveTransactions) {
                         min-width: 200px;
                     ">
                         <div style="font-weight: 700; margin-bottom: 6px; color: #7e22ce;">${monthLabel}</div>
-                        <div style="color: #333333; margin-bottom: 4px;">${isin}: ${formattedValue}</div>
+                        <div style="font-weight: 600; color: #2563eb; margin-bottom: 2px;">${etfName}</div>
+                        <div style="color: #999999; font-size: 10px; margin-bottom: 4px;">${isin}</div>
+                        <div style="color: #333333; margin-bottom: 4px;">Importo: ${formattedValue}</div>
                         <div style="color: #666666; font-size: 11px; padding-top: 4px; border-top: 1px solid #e5e7eb;">
                             Totale mese: ${formattedTotal}
                         </div>

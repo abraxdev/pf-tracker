@@ -8,7 +8,9 @@
     "dev": "nodemon app.js",
     "tailwind:build": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css",
     "tailwind:watch": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --watch",
-    "extract-isin": "node ../scripts/extract-isin.js"
+    "extract-isin": "node ../scripts/extract-isin.js",
+    "resolve-isin": "node ../scripts/resolve-isin.js",
+    "search-figi": "node ../scripts/search-figi.js"
   },
   "keywords": [
     "finance",
