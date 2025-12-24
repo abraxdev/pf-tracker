@@ -9,8 +9,12 @@
     "tailwind:build": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css",
     "tailwind:watch": "tailwindcss -i ./public/css/input.css -o ./public/css/styles.css --watch",
     "extract-isin": "node ../scripts/extract-isin.js",
-    "resolve-isin": "node ../scripts/resolve-isin.js",
-    "search-figi": "node ../scripts/search-figi.js"
+    "resolve-isin": "NODE_PATH=node_modules node ../scripts/resolve-isin.js",
+    "resolve-isin:batch": "NODE_PATH=node_modules node ../scripts/resolve-isin.js --batch",
+    "ticker-status": "NODE_PATH=node_modules node ../scripts/check-ticker-status.js",
+    "build-pf": "NODE_PATH=node_modules node ../scripts/build-pf-position.js",
+    "search-figi": "node ../scripts/search-figi.js",
+    "scrape-pf-titles": "NODE_PATH=node_modules node ../scripts/scrape-pf-title.js"
   },
   "keywords": [
     "finance",
@@ -35,7 +39,9 @@
     "iconv-lite": "^0.6.3",
     "multer": "^1.4.5-lts.1",
     "pdf-parse": "^2.4.5",
-    "xlsx": "^0.18.5"
+    "puppeteer": "^24.34.0",
+    "xlsx": "^0.18.5",
+    "yahoo-finance2": "^3.10.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",
