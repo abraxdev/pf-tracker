@@ -225,6 +225,10 @@ a, button {
     height: 0.875rem;
 }
 
+#portfolio-table .text-sm {
+    font-size: 0.775rem;
+}
+
 /* Graphs Overlay Styles */
 .graphs-overlay {
     position: fixed;
@@ -438,7 +442,7 @@ a, button {
 
 .edit-input {
     width: 100%;
-    padding: 0.375rem 0.5rem;
+    padding: 0.2rem 0.4rem;
     border: 1px solid #d1d5db;
     border-radius: 0.375rem;
     font-size: 0.75rem;
@@ -454,6 +458,24 @@ a, button {
 .edit-input.error {
     border-color: #ef4444;
     background-color: #fef2f2;
+}
+
+.portfolio-row .edit-input {
+  width:100% !important;
+}
+
+.portfolio-row .edit-input[id^="edit-qty"] {
+  width:100% !important;
+}
+
+.transaction-row .edit-input[id^="edit-in-"] {
+  width:70% !important;
+  text-align: center;
+}
+
+.transaction-row .edit-input[id^="edit-out-"] {
+  width:70% !important;
+  text-align: center;
 }
 
 .edit-category-select,
@@ -538,4 +560,61 @@ a, button {
 
 .animate-spin {
     animation: spin 1s linear infinite;
+}
+
+/* Portfolio-specific styles */
+.portfolio-row {
+    cursor: default;
+}
+
+.editable-field {
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: background-color 0.15s ease;
+}
+
+.editable-field:hover {
+    background-color: #f3f4f6;
+}
+
+.edit-input {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+}
+
+.edit-input:focus {
+    outline: none;
+    border-color: #9333ea;
+    box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.2);
+}
+
+.edit-actions-buttons {
+    opacity: 1 !important;
+}
+
+.transaction-details {
+    transition: all 0.2s ease;
+}
+
+.transaction-details.hidden {
+    display: none;
+}
+
+.transaction-details-content {
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

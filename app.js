@@ -60,6 +60,8 @@ app.use('/', require('./routes/index'));
 app.use('/upload', require('./routes/upload'));
 app.use('/transactions', require('./routes/transactionsView'));
 app.use('/api/transactions', require('./routes/transactions'));
+app.use('/portfolio', require('./routes/portfolioView'));
+app.use('/api/portfolio', require('./routes/portfolio'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
