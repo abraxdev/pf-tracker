@@ -92,7 +92,7 @@
                         <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-24" data-sort="ticker">
                             Ticker
                         </th>
-                        <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" data-sort="div_yield">
+                        <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-20" data-sort="div_yield">
                             Dividendo
                         </th>
                         <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-24" data-sort="qty">
@@ -142,7 +142,8 @@
 
                 <!-- Spacer - grows to push totals to the right -->
                 <div class="flex-1 flex items-center px-4">
-                    <button id="exp-csv-btn" class="btn-primary btn-sm text-xs">
+
+                    <button id="exp-csv-btn" class="btn-primary btn-sm text-xs ml-2">
                         <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
@@ -156,13 +157,28 @@
                         </svg>
                         Visualizza grafici
                     </button>
+
+                    <button id="sync-prices-btn" class="btn-secondary btn-sm text-xs ml-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Sincronizza Prezzi
+                    </button>
                 </div>
 
-                <!-- Total Portfolio Value -->
+                <!-- Portfolio Metrics -->
                 <div class="flex items-center gap-0">
-                    <div class="px-6 text-center">
-                        <div class="text-xs text-gray-500 font-medium mb-0.5">Valore Totale Portfolio</div>
+                    <div class="px-4 text-center border-r border-gray-200">
+                        <div class="text-xs text-gray-500 font-medium mb-0.5">Totale Investito</div>
+                        <div id="summary-invested" class="font-mono font-bold text-gray-900">€ 0,00</div>
+                    </div>
+                    <div class="px-4 text-center border-r border-gray-200">
+                        <div class="text-xs text-gray-500 font-medium mb-0.5">Valore Portfolio</div>
                         <div id="summary-total" class="font-mono font-bold text-purple-600">€ 0,00</div>
+                    </div>
+                    <div class="px-4 text-center border-r border-gray-200">
+                        <div class="text-xs text-gray-500 font-medium mb-0.5">Variazione %</div>
+                        <div id="summary-variation" class="font-mono font-bold">0,00%</div>
                     </div>
                 </div>
             </div>
@@ -185,6 +201,68 @@
             <div class="flex gap-3 justify-end">
                 <button id="cancel-delete" class="btn-outline-secondary btn-sm">Annulla</button>
                 <button id="confirm-delete" class="btn-danger btn-sm">Elimina</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Graphs Overlay -->
+<div id="graphs-overlay" class="graphs-overlay hidden">
+    <div class="graphs-container">
+        <!-- Header -->
+        <div class="graphs-header">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900">Analisi Portfolio</h2>
+                <p id="graphs-period" class="text-sm text-gray-600 mt-1"></p>
+            </div>
+            <button id="close-graphs" class="graphs-close-btn">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="graphs-tabs">
+            <button class="graphs-tab active font-mono" data-tab="allocation">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
+                </svg>
+                Ripartizione
+            </button>
+            <button class="graphs-tab font-mono" data-tab="dividends">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Dividendi
+            </button>
+        </div>
+
+        <!-- Tab Contents -->
+        <div class="graphs-content">
+            <!-- Allocation Tab -->
+            <div class="graphs-tab-content active" data-content="allocation">
+                <div class="graphs-grid">
+                    <div class="graph-card graph-card-full">
+                        <h3 class="graph-card-title">Ripartizione Investimenti per Titolo</h3>
+                        <div id="chart-allocation-treemap"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dividends Tab -->
+            <div class="graphs-tab-content" data-content="dividends">
+                <div class="graphs-grid">
+                    <div class="graph-card">
+                        <h3 class="graph-card-title">Dividendi Netti Previsti per Titolo</h3>
+                        <div id="chart-dividends-by-position"></div>
+                    </div>
+                    <div class="graph-card">
+                        <h3 class="graph-card-title">Totale Dividendi Netti Annuali</h3>
+                        <div id="chart-dividends-total"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -190,7 +190,7 @@ async function loadPortfolio() {
 
         allPositions = result.positions || [];
         renderPortfolio(allPositions);
-        updateSummary(allPositions);
+        updateSummary(allPositions, result.summary);
 
     } catch (error) {
         console.error('Error loading portfolio:', error);
@@ -229,7 +229,7 @@ function renderPortfolio(positions) {
                     </span>
                 </td>
                 <td class="px-2 py-3 text-sm">
-                    <div class="font-medium text-gray-900 font-mono">${position.nome || 'N/A'}</div>
+                    <div class="font-medium text-gray-900 font-mono text-pf-title">${position.nome || 'N/A'}</div>
                     <div class="text-xs text-gray-500">${position.isin}</div>
                 </td>
                 <td class="px-1 py-1 text-sm text-center">
@@ -237,8 +237,11 @@ function renderPortfolio(positions) {
                         ${position.ticker || '-'}
                     </span>
                 </td>
-                <td class="px-3 py-3 text-sm text-center font-mono font-bold text-gray-900 ${position.div_yield ? 'underline' : ''}">
-                    ${position.div_yield ? position.div_yield.toFixed(2) + '%' : '-'}
+                <td class="px-3 py-3 text-sm text-center">
+                    <div class="font-mono font-bold text-gray-900 ${position.div_yield ? 'underline' : ''}">
+                        ${position.div_yield ? position.div_yield.toFixed(2) + '%' : '-'}
+                    </div>
+                    ${position.div_yield && position.tax_rate ? `<div class="editable-field text-xs text-gray-500 mt-0.5" data-field="tax_rate" data-isin="${position.isin}">(${(position.tax_rate * 100).toFixed(1)}%)</div>` : ''}
                 </td>
                 <td class="px-1 py-1 text-sm text-center">
                     <span class="editable-field font-mono" data-field="qty" data-isin="${position.isin}">
@@ -277,8 +280,7 @@ function renderPortfolio(positions) {
             <tr class="transaction-details hidden" data-isin="${position.isin}">
                 <td colspan="9" class="px-0 py-0">
                     <div class="bg-gray-50 border-t border-gray-200">
-                        <div class="px-6 py-4">
-                            <div class="text-sm font-medium text-gray-700 mb-3">Transazioni per ${position.nome}</div>
+                        <div class="p-6">
                             <div class="transaction-details-content"></div>
                         </div>
                     </div>
@@ -339,22 +341,44 @@ function enableEditMode(isin) {
     row.dataset.isEditing = 'true';
 
     const cells = row.querySelectorAll('td');
-    const qtyCell = cells[4];
     const tickerCell = cells[2];
+    const dividendCell = cells[3];
+    const qtyCell = cells[4];
     const actionsCell = cells[8];
 
     // Store original HTML
-    const originalQtyHTML = qtyCell.innerHTML;
     const originalTickerHTML = tickerCell.innerHTML;
+    const originalDividendHTML = dividendCell.innerHTML;
+    const originalQtyHTML = qtyCell.innerHTML;
     const originalActionsHTML = actionsCell.innerHTML;
 
     // Get current values
-    const currentQty = qtyCell.textContent.trim();
     const currentTicker = tickerCell.textContent.trim();
+    const currentQty = qtyCell.textContent.trim();
+
+    // Get tax_rate value from the tax rate div if it exists
+    const taxRateDiv = dividendCell.querySelector('[data-field="tax_rate"]');
+    let currentTaxRate = '';
+    if (taxRateDiv) {
+        const taxText = taxRateDiv.textContent.trim();
+        // Extract percentage value (e.g., "Tax: 27.0%" -> "27.0")
+        const match = taxText.match(/Tax:\s*([\d.]+)%/);
+        currentTaxRate = match ? match[1] : '';
+    }
 
     // Replace with input fields
-    qtyCell.innerHTML = `<input type="text" value="${currentQty}" class="edit-input text-center font-mono" id="edit-qty-${isin}">`;
     tickerCell.innerHTML = `<input type="text" value="${currentTicker}" class="edit-input text-center font-mono" id="edit-ticker-${isin}">`;
+    qtyCell.innerHTML = `<input type="text" value="${currentQty}" class="edit-input text-center font-mono" id="edit-qty-${isin}">`;
+
+    // Only show tax_rate input if there's a tax rate to edit
+    if (taxRateDiv) {
+        const divYieldDiv = dividendCell.querySelector('div:first-child');
+        const divYieldHTML = divYieldDiv ? divYieldDiv.outerHTML : '';
+        dividendCell.innerHTML = `
+            ${divYieldHTML}
+            <input type="text" value="${currentTaxRate}" placeholder="Tax %" class="edit-input text-center font-mono mt-0.5 text-xs" id="edit-tax-${isin}">
+        `;
+    }
 
     // Replace action buttons with save/cancel icons
     actionsCell.innerHTML = `
@@ -379,8 +403,9 @@ function enableEditMode(isin) {
 
     // Restore function
     const restoreOriginal = () => {
-        qtyCell.innerHTML = originalQtyHTML;
         tickerCell.innerHTML = originalTickerHTML;
+        dividendCell.innerHTML = originalDividendHTML;
+        qtyCell.innerHTML = originalQtyHTML;
         actionsCell.innerHTML = originalActionsHTML;
         row.dataset.isEditing = 'false';
 
@@ -392,6 +417,19 @@ function enableEditMode(isin) {
     const saveEdit = async () => {
         const newQty = parseFloat(qtyInput.value);
         const newTicker = document.getElementById(`edit-ticker-${isin}`).value.trim();
+
+        // Get tax_rate if input exists
+        const taxInput = document.getElementById(`edit-tax-${isin}`);
+        let newTaxRate = null;
+        if (taxInput) {
+            const taxValue = parseFloat(taxInput.value);
+            if (!isNaN(taxValue) && taxValue >= 0 && taxValue <= 100) {
+                newTaxRate = taxValue / 100; // Convert percentage to decimal
+            } else if (taxInput.value.trim() !== '') {
+                alert('Tax rate non valido (deve essere tra 0 e 100)');
+                return;
+            }
+        }
 
         // Validate
         if (isNaN(newQty) || newQty < 0) {
@@ -410,10 +448,15 @@ function enableEditMode(isin) {
         `;
 
         try {
+            const updateData = { qty: newQty, ticker: newTicker };
+            if (newTaxRate !== null) {
+                updateData.tax_rate = newTaxRate;
+            }
+
             const response = await fetch(`/api/portfolio/${isin}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ qty: newQty, ticker: newTicker })
+                body: JSON.stringify(updateData)
             });
 
             const result = await response.json();
@@ -455,6 +498,14 @@ function enableEditMode(isin) {
         if (e.key === 'Enter') saveEdit();
         if (e.key === 'Escape') restoreOriginal();
     });
+
+    const taxInput = document.getElementById(`edit-tax-${isin}`);
+    if (taxInput) {
+        taxInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') saveEdit();
+            if (e.key === 'Escape') restoreOriginal();
+        });
+    }
 }
 
 
@@ -527,13 +578,16 @@ async function toggleTransactionDetails(isin) {
         }
 
         // Render transactions grouped by type
-        let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+        let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-10">';
 
         // Investments
         html += '<div>';
         html += '<div class="flex justify-between items-center mb-2">';
-        html += '<h4 class="font-medium text-sm text-gray-700">Investimenti</h4>';
-        html += `<div class="text-xs font-bold text-purple-600">Tot: € ${formatNumber(transactions.tot_investito || 0)}</div>`;
+        html += '<h4 class="font-medium text-pf-title text-gray-900 flex gap-1">';
+        html += '<svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>';
+        html += 'Investimenti';
+        html += '</h4>';
+        html += `<div class="text-pf-title font-bold font-mono text-purple-600">Tot: € ${formatNumber(transactions.tot_investito || 0)}</div>`;
         html += '</div>';
         if (transactions.investments && transactions.investments.length > 0) {
             html += '<div class="space-y-1">';
@@ -541,43 +595,70 @@ async function toggleTransactionDetails(isin) {
                 const amountOut = parseFloat(tx.amount_out || 0);
                 const amountIn = parseFloat(tx.amount_in || 0);
                 const netAmount = amountOut - amountIn;
-                const displayColor = netAmount >= 0 ? 'text-gray-900' : 'text-red-600';
+                const displayColor = netAmount >= 0 ? 'text-red-600' : 'text-green-600';
                 html += `
                     <div class="text-xs bg-white p-2 rounded border border-gray-200">
                         <div class="flex justify-between">
                             <span class="text-gray-600">${formatDate(tx.transaction_date)}</span>
                             <span class="font-mono font-medium ${displayColor}">€ ${formatNumber(netAmount)}</span>
                         </div>
-                        <div class="text-gray-500 mt-1">${tx.description || '-'}</div>
+                        <div class="text-gray-500 font-mono mt-1">${tx.description || '-'}</div>
                     </div>
                 `;
             });
             html += '</div>';
         } else {
-            html += '<div class="text-xs text-gray-500">Nessun investimento</div>';
+            html += '<div class="text-xs text-gray-500">Nessun investimento da mostrare.</div>';
         }
         html += '</div>';
 
         // Dividends
         html += '<div>';
-        html += '<h4 class="font-medium text-sm text-gray-700 mb-2">Dividendi</h4>';
-        if (transactions.dividends && transactions.dividends.length > 0) {
-            html += '<div class="space-y-1">';
-            transactions.dividends.forEach(tx => {
-                const amount = tx.amount_in || 0;
+        html += '<div class="flex justify-between items-center mb-2">';
+        html += '<h4 class="font-medium text-pf-title text-gray-900 mb-2 flex gap-1">';
+        html += '<svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>';
+        html += 'Dividendi';
+        html +='</h4>';
+        html += '</div>';
+        if (transactions.dividendsByYear && transactions.dividendsByYear.length > 0) {
+            html += '<div class="space-y-2">';
+
+            // Summary by year
+            transactions.dividendsByYear.forEach(yearData => {
                 html += `
-                    <div class="text-xs bg-white p-2 rounded border border-gray-200">
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">${formatDate(tx.transaction_date)}</span>
-                            <span class="font-mono font-medium text-green-600">€ ${formatNumber(amount)}</span>
+                    <div class="bg-white border border-gray-200 rounded">
+                        <div class="flex justify-between items-center p-2 bg-gray-50 border-b border-gray-200">
+                            <span class="font-medium text-xs text-gray-700">${yearData.year}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-500">${yearData.count} transazion${yearData.count === 1 ? 'e' : 'i'}</span>
+                                <span class="font-mono font-bold text-pf-title text-green-600">€ ${formatNumber(yearData.total)}</span>
+                            </div>
                         </div>
-                        <div class="text-gray-500 mt-1">${tx.description || '-'}</div>
+                        <div class="space-y-1">
+                `;
+
+                yearData.transactions.forEach(tx => {
+                    const amount = parseFloat(tx.amount_in || 0);
+                    html += `
+                        <div class="text-xs flex justify-between p-2 border-b border-gray-200 items-start">
+                            <div class="flex-1">
+                                <span class="text-gray-600">${formatDate(tx.transaction_date)}</span>
+                                <div class="text-gray-500 mt-0.5 font-mono">${tx.description || '-'}</div>
+                            </div>
+                            <span class="font-mono text-xs font-bold text-green-600 ml-2">€ ${formatNumber(amount)}</span>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
                     </div>
                 `;
             });
+
             html += '</div>';
         } else {
-            html += '<div class="text-xs text-gray-500">Nessun dividendo</div>';
+            html += '<div class="text-xs text-gray-500">Nessun dividendo da mostrare.</div>';
         }
         html += '</div>';
 
@@ -592,12 +673,32 @@ async function toggleTransactionDetails(isin) {
 }
 
 // Update summary bar
-function updateSummary(positions) {
+function updateSummary(positions, summary) {
     const count = positions.length;
-    const totalValue = positions.reduce((sum, p) => sum + p.value, 0);
 
+    // Update count
     document.getElementById('summary-count').textContent = count;
-    document.getElementById('summary-total').textContent = `€ ${formatNumber(totalValue)}`;
+
+    // Update financial metrics from summary
+    if (summary) {
+        document.getElementById('summary-invested').textContent = `€ ${formatNumber(summary.totalInvested)}`;
+        document.getElementById('summary-total').textContent = `€ ${formatNumber(summary.currentValue)}`;
+
+        // Variation % with color
+        const variationEl = document.getElementById('summary-variation');
+        const variation = summary.portfolioVariation;
+        const variationIcon = variation >= 0 ? '▲' : '▼';
+        const variationColor = variation >= 0 ? 'text-green-600' : 'text-red-600';
+        variationEl.className = `font-mono font-bold ${variationColor}`;
+        variationEl.innerHTML = `<span class="text-xs">${variationIcon} </span>${Math.abs(variation).toFixed(2)}%`;
+
+        // document.getElementById('summary-dividends').textContent = `€ ${formatNumber(summary.totalDividends)}`;
+        // document.getElementById('summary-total-with-div').textContent = `€ ${formatNumber(summary.totalValueWithDividends)}`;
+    } else {
+        // Fallback if summary not provided
+        const totalValue = positions.reduce((sum, p) => sum + p.value, 0);
+        document.getElementById('summary-total').textContent = `€ ${formatNumber(totalValue)}`;
+    }
 }
 
 // Format number
@@ -614,6 +715,44 @@ function formatDate(dateStr) {
     const date = new Date(dateStr);
     return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
+
+// Sync Prices Button
+document.getElementById('sync-prices-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('sync-prices-btn');
+
+    // Add syncing state
+    btn.disabled = true;
+    btn.classList.add('syncing');
+    btn.innerHTML = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+        Sincronizzazione in corso...
+    `;
+
+    try {
+        // TODO: Implement sync logic
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Placeholder
+
+        alert('Sincronizzazione completata! (funzionalità da implementare)');
+
+        // Reload portfolio after sync
+        await loadPortfolio();
+    } catch (error) {
+        console.error('Error syncing prices:', error);
+        alert('Errore durante la sincronizzazione');
+    } finally {
+        // Restore button state
+        btn.disabled = false;
+        btn.classList.remove('syncing');
+        btn.innerHTML = `
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            Sincronizza Prezzi
+        `;
+    }
+});
 
 // CSV Export
 document.getElementById('exp-csv-btn').addEventListener('click', () => {
@@ -695,6 +834,453 @@ document.querySelectorAll('th[data-sort]').forEach(th => {
         loadPortfolio();
     });
 });
+
+// ===============================
+// GRAPHS OVERLAY
+// ===============================
+
+// Chart instances storage
+const chartInstances = {};
+
+// View Graphs Button - Open overlay
+document.getElementById('view-graph').addEventListener('click', () => {
+    const overlay = document.getElementById('graphs-overlay');
+    overlay.classList.remove('hidden');
+
+    // Update period info
+    const periodEl = document.getElementById('graphs-period');
+    const count = allPositions.length;
+    periodEl.textContent = `${count} titol${count === 1 ? 'o' : 'i'} nel portfolio`;
+
+    // Render all graphs
+    setTimeout(() => renderAllGraphs(), 100);
+});
+
+// Close Graphs Button
+document.getElementById('close-graphs').addEventListener('click', () => {
+    document.getElementById('graphs-overlay').classList.add('hidden');
+});
+
+// Tab switching
+document.querySelectorAll('.graphs-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        const targetTab = tab.dataset.tab;
+
+        // Update active tab
+        document.querySelectorAll('.graphs-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        // Update active content
+        document.querySelectorAll('.graphs-tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.querySelector(`.graphs-tab-content[data-content="${targetTab}"]`).classList.add('active');
+    });
+});
+
+// Render all graphs
+function renderAllGraphs() {
+    // Destroy existing charts
+    Object.values(chartInstances).forEach(chart => {
+        if (chart && chart.destroy) {
+            chart.destroy();
+        }
+    });
+
+    renderAllocationTreemap();
+    renderDividendsByPosition();
+    renderDividendsTotal();
+}
+
+// ===============================
+// ALLOCATION GRAPHS
+// ===============================
+
+// Prepare allocation data
+function prepareAllocationData() {
+    if (!allPositions || allPositions.length === 0) {
+        return { treemapData: [] };
+    }
+
+    // Sort positions by value (descending)
+    const sortedPositions = [...allPositions].sort((a, b) => b.value - a.value);
+
+    // Calculate total
+    const totalValue = sortedPositions.reduce((sum, item) => sum + item.value, 0);
+
+    // Treemap data
+    const treemapData = sortedPositions.map(position => ({
+        name: position.ticker || position.nome,
+        value: position.value,
+        type: position.tipologia,
+        fullName: position.nome,
+        percentage: (position.value / totalValue * 100).toFixed(2)
+    }));
+
+    return { treemapData };
+}
+
+// Render Treemap (as horizontal bar chart)
+function renderAllocationTreemap() {
+    const { treemapData } = prepareAllocationData();
+
+    if (treemapData.length === 0) {
+        document.getElementById('chart-allocation-treemap').innerHTML =
+            '<div class="text-center text-gray-500 py-8">Nessun dato disponibile</div>';
+        return;
+    }
+
+    const options = {
+        series: [{
+            name: 'Valore',
+            data: treemapData.map(d => ({
+                x: d.name,
+                y: d.value,
+                fillColor: d.type === 'ETF' ? '#3b82f6' : '#10b981',
+                meta: d
+            }))
+        }],
+        chart: {
+            type: 'treemap',
+            height: 600,
+            toolbar: {
+                show: false
+            }
+        },
+        plotOptions: {
+            treemap: {
+                distributed: true,
+                enableShades: false
+            }
+        },
+        dataLabels: {
+            enabled: true,
+            offsetY: -10,
+            style: {
+                fontSize: '11px',
+                fontFamily: 'monospace'
+            },
+            formatter: function(text, op) {
+                const meta = op.w.config.series[op.seriesIndex].data[op.dataPointIndex].meta;
+                return [meta.name, '€ ' + formatNumber(meta.value), meta.percentage + '%'];
+            }
+        },
+        tooltip: {
+            custom: function({seriesIndex, dataPointIndex, w}) {
+                const meta = w.config.series[seriesIndex].data[dataPointIndex].meta;
+                return `
+                    <div style="
+                        background: #ffffff;
+                        color: #1f2937;
+                        padding: 8px 12px;
+                        border-radius: 6px;
+                        font-family: 'JetBrains Mono', monospace;
+                        font-size: 12px;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+                    ">
+                        <div style="font-weight: 600; margin-bottom: 4px;">${meta.fullName}</div>
+                        <div style="color: #6b7280; margin-bottom: 4px;">${meta.name} (${meta.type})</div>
+                        <div style="color: #333333;">Valore: € ${formatNumber(meta.value)}</div>
+                        <div style="color: #333333;">Peso: ${meta.percentage}%</div>
+                    </div>
+                `;
+            }
+        },
+        legend: {
+            show: false
+        }
+    };
+
+    if (chartInstances['chart-allocation-treemap']) {
+        chartInstances['chart-allocation-treemap'].destroy();
+    }
+
+    chartInstances['chart-allocation-treemap'] = new ApexCharts(
+        document.querySelector('#chart-allocation-treemap'),
+        options
+    );
+    chartInstances['chart-allocation-treemap'].render();
+}
+
+// ===============================
+// DIVIDENDS GRAPHS
+// ===============================
+
+// Prepare dividend data
+function prepareDividendData() {
+    if (!allPositions || allPositions.length === 0) {
+        return { byPosition: [], total: 0 };
+    }
+
+    const dividendPositions = allPositions.filter(p => p.div_yield && p.div_yield > 0);
+
+    const byPosition = dividendPositions.map(position => {
+        // Calculate: dividend_yield * position_value * (1 - tax_rate)
+        const grossDividend = (position.div_yield / 100) * position.value;
+        const taxRate = position.tax_rate || 0;
+        const netDividend = grossDividend * (1 - taxRate);
+
+        return {
+            name: position.ticker || position.nome,
+            fullName: position.nome,
+            value: netDividend,
+            grossValue: grossDividend,
+            divYield: position.div_yield,
+            taxRate: taxRate,
+            positionValue: position.value
+        };
+    });
+
+    // Sort by net dividend (descending)
+    byPosition.sort((a, b) => b.value - a.value);
+
+    const total = byPosition.reduce((sum, item) => sum + item.value, 0);
+
+    return { byPosition, total };
+}
+
+// Render Dividends by Position
+function renderDividendsByPosition() {
+    const { byPosition } = prepareDividendData();
+
+    if (byPosition.length === 0) {
+        document.getElementById('chart-dividends-by-position').innerHTML =
+            '<div class="text-center text-gray-500 py-8">Nessun titolo con dividendi</div>';
+        return;
+    }
+
+    // Calculate dynamic height based on number of items
+    const itemHeight = 35; // Height per bar
+    const baseHeight = 100; // Base padding
+    const dynamicHeight = Math.max(450, (byPosition.length * itemHeight) + baseHeight);
+
+    const options = {
+        series: [{
+            name: 'Dividendo Netto',
+            data: byPosition.map(d => ({
+                x: d.name,
+                y: d.value,
+                meta: d
+            }))
+        }],
+        chart: {
+            type: 'bar',
+            height: dynamicHeight,
+            toolbar: {
+                show: false
+            }
+        },
+        plotOptions: {
+            bar: {
+                horizontal: true,
+                distributed: false,
+                barHeight: '70%',
+                dataLabels: {
+                    position: 'top'
+                }
+            }
+        },
+        colors: ['#10b981'],
+        dataLabels: {
+            enabled: true,
+            offsetX: 30,
+            style: {
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                colors: ['#10b981']
+            },
+            formatter: function(val) {
+                return '€ ' + formatNumber(val);
+            }
+        },
+        xaxis: {
+            labels: {
+                formatter: function(val) {
+                    return '€ ' + formatNumber(val);
+                },
+                style: {
+                    fontSize: '10px',
+                    fontFamily: 'monospace'
+                }
+            }
+        },
+        yaxis: {
+            labels: {
+                style: {
+                    fontSize: '10px',
+                    fontFamily: 'monospace'
+                }
+            }
+        },
+        tooltip: {
+            custom: function({seriesIndex, dataPointIndex, w}) {
+                const meta = w.config.series[seriesIndex].data[dataPointIndex].meta;
+                return `
+                    <div style="
+                        background: #ffffff;
+                        color: #1f2937;
+                        padding: 8px 12px;
+                        border-radius: 6px;
+                        font-family: 'JetBrains Mono', monospace;
+                        font-size: 12px;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+                    ">
+                        <div style="font-weight: 600; margin-bottom: 4px;">${meta.fullName}</div>
+                        <div style="color: #333333; margin-top: 4px;">Dividend Yield: ${meta.divYield.toFixed(2)}%</div>
+                        <div style="color: #333333;">Valore Posizione: € ${formatNumber(meta.positionValue)}</div>
+                        <div style="color: #333333;">Dividendo Lordo: € ${formatNumber(meta.grossValue)}</div>
+                        <div style="color: #333333;">Tassazione: ${(meta.taxRate * 100).toFixed(1)}%</div>
+                        <div style="font-weight: 600; margin-top: 4px; color: #10b981;">Dividendo Netto: € ${formatNumber(meta.value)}</div>
+                    </div>
+                `;
+            }
+        },
+        grid: {
+            xaxis: {
+                lines: {
+                    show: true
+                }
+            },
+            padding: {
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 10
+            }
+        }
+    };
+
+    if (chartInstances['chart-dividends-by-position']) {
+        chartInstances['chart-dividends-by-position'].destroy();
+    }
+
+    chartInstances['chart-dividends-by-position'] = new ApexCharts(
+        document.querySelector('#chart-dividends-by-position'),
+        options
+    );
+    chartInstances['chart-dividends-by-position'].render();
+}
+
+// Render Total Dividends
+function renderDividendsTotal() {
+    const { byPosition, total } = prepareDividendData();
+
+    if (byPosition.length === 0) {
+        document.getElementById('chart-dividends-total').innerHTML =
+            '<div class="text-center text-gray-500 py-8">Nessun titolo con dividendi</div>';
+        return;
+    }
+
+    const series = byPosition.map(d => d.value);
+    const labels = byPosition.map(d => d.name);
+
+    const options = {
+        series: series,
+        labels: labels,
+        chart: {
+            type: 'donut',
+            height: 450,
+            toolbar: {
+                show: false
+            }
+        },
+        plotOptions: {
+            pie: {
+                startAngle: 0,
+                endAngle: 360,
+                expandOnClick: true,
+                donut: {
+                    size: '65%',
+                    labels: {
+                        show: true,
+                        name: {
+                            show: true,
+                            fontSize: '14px',
+                            fontFamily: 'monospace',
+                            fontWeight: 600,
+                            offsetY: -10
+                        },
+                        value: {
+                            show: true,
+                            fontSize: '20px',
+                            fontFamily: 'monospace',
+                            fontWeight: 'bold',
+                            offsetY: 5,
+                            formatter: function (val) {
+                                return '€ ' + formatNumber(parseFloat(val));
+                            }
+                        },
+                        total: {
+                            show: true,
+                            showAlways: true,
+                            label: 'Totale Dividendi Annuali',
+                            fontSize: '12px',
+                            fontFamily: 'monospace',
+                            fontWeight: 600,
+                            color: '#373d3f',
+                            formatter: function () {
+                                return '€ ' + formatNumber(total);
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        colors: ['#10b981', '#059669', '#34d399', '#6ee7b7', '#a7f3d0', '#d1fae5',
+                 '#3b82f6', '#2563eb', '#60a5fa', '#93c5fd', '#dbeafe', '#eff6ff'],
+        dataLabels: {
+            enabled: false
+        },
+        tooltip: {
+            custom: function({seriesIndex, dataPointIndex, w}) {
+                const meta = byPosition[seriesIndex];
+                const val = series[seriesIndex];
+                const percentage = (val / total * 100).toFixed(2);
+                return `
+                    <div style="
+                        background: #ffffff;
+                        color: #1f2937;
+                        padding: 8px 12px;
+                        border-radius: 6px;
+                        font-family: 'JetBrains Mono', monospace;
+                        font-size: 12px;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+                    ">
+                        <div style="font-weight: 600; margin-bottom: 4px;">${meta.fullName}</div>
+                        <div style="color: #6b7280; margin-bottom: 4px;">${meta.name}</div>
+                        <div style="color: #333333;">Dividend Yield: ${meta.divYield.toFixed(2)}%</div>
+                        <div style="color: #333333;">Valore Posizione: € ${formatNumber(meta.positionValue)}</div>
+                        <div style="color: #333333;">Dividendo Lordo: € ${formatNumber(meta.grossValue)}</div>
+                        <div style="color: #333333;">Tassazione: ${(meta.taxRate * 100).toFixed(1)}%</div>
+                        <div style="font-weight: 600; margin-top: 4px; color: #10b981;">Dividendo Netto: € ${formatNumber(val)}</div>
+                        <div style="color: #333333; margin-top: 2px;">Percentuale sul totale: ${percentage}%</div>
+                    </div>
+                `;
+            }
+        },
+        legend: {
+            show: false
+        },
+        responsive: [{
+            breakpoint: 480,
+            options: {
+                chart: {
+                    height: 300
+                }
+            }
+        }]
+    };
+
+    if (chartInstances['chart-dividends-total']) {
+        chartInstances['chart-dividends-total'].destroy();
+    }
+
+    chartInstances['chart-dividends-total'] = new ApexCharts(
+        document.querySelector('#chart-dividends-total'),
+        options
+    );
+    chartInstances['chart-dividends-total'].render();
+}
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {

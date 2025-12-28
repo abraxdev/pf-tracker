@@ -2250,11 +2250,6 @@ h1, h2, h3, h4,h5, h6 {
   opacity: 1 !important;
 }
 
-.portfolio-row:hover .row-actions {
-  opacity: 1 !important;
-}
-
-
 /* Excluded/Inactive transaction styling */
 
 .transaction-row-excluded {
@@ -2620,6 +2615,10 @@ h1, h2, h3, h4,h5, h6 {
 
 .gap-1 {
   gap: 0.25rem;
+}
+
+.gap-10 {
+  gap: 2.5rem;
 }
 
 .gap-2 {
@@ -3160,6 +3159,10 @@ h1, h2, h3, h4,h5, h6 {
   opacity: 0;
 }
 
+.opacity-100 {
+  opacity: 1;
+}
+
 .opacity-25 {
   opacity: 0.25;
 }
@@ -3398,6 +3401,10 @@ h1, h2, h3, h4,h5, h6 {
 .hover\:text-purple-700:hover {
   --tw-text-opacity: 1;
   color: rgb(126 34 206 / var(--tw-text-opacity, 1));
+}
+
+.group:hover .group-hover\:opacity-100 {
+  opacity: 1;
 }
 
 @media (min-width: 768px) {
